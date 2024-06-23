@@ -1,0 +1,138 @@
+body {
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-image: url('background.jpg'); /* Replace 'background.jpg' with your image path */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: #333;
+}
+
+#gameContainer {
+    flex-grow: 1;
+    width: 100vw;
+    margin: 0;
+    border: none;
+    background-color: transparent;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+}
+#points {
+    margin-right: 50px;
+}
+#header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px; /* Adjusted padding to ensure visibility */
+    background-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 10px 10px;
+}
+
+#userInfo {
+    color: #000;
+    font-size: 20px;
+    font-weight: bold;
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+#pointsContainer, #ticketsContainer {
+    display: flex;
+    align-items: center;
+}
+
+#pointsContainer .icon, #ticketsContainer .icon {
+    width: 50px;
+    height: 50px;
+    margin-right: 10px;
+}
+
+#points, #ticketsInfo {
+    font-size: 20px;
+    color: #000;
+    font-weight: bold;
+    white-space: nowrap; /* Ensure text does not wrap */
+}
+
+#startScreen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#newLayout {
+    width: 80%;
+    max-width: 400px;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+button {
+    font-family: 'Roboto', sans-serif;
+    padding: 15px 30px;
+    margin: 10px 0;
+    background: linear-gradient(45deg, #ff7e5f, #feb47b);
+    color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    width: calc(100% - 40px);
+    max-width: 300px;
+}
+
+button:hover {
+    background: linear-gradient(45deg, #feb47b, #ff7e5f);
+}
+
+#footer {
+    display: flex;
+    justify-content: space-around;
+    background-color: #f0f0f0;
+    padding: 10px 0;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
+.footer-button {
+    flex-grow: 1;
+    text-align: center;
+    padding: 5px 0;
+    margin: 0 5px;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.footer-button img {
+    max-width: 30px;
+    height: auto;
+}

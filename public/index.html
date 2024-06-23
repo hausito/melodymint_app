@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melody Mint</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Ensure Telegram SDK is available
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.expand();
+            }
+        });
+    </script>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="360" height="640"></canvas>
+        <div id="header">
+            <div id="userInfo">Username</div>
+            <div id="pointsContainer">
+                <img src="points.png" alt="Points" class="icon">
+                <span id="points">Loading...</span>
+            </div>
+        </div>
+        <div id="startScreen">
+            <div id="newLayout">
+                <div id="ticketsContainer">
+                    <img src="tickets.png" alt="Tickets" class="icon">
+                    <span id="ticketsInfo">Loading...</span>
+                </div>
+                <button id="playButton">Play</button>
+                <button id="tasksButton" class="comingSoon">Tasks</button>
+                <button id="upgradeButton" class="comingSoon">Upgrade</button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="backgroundMusic" src="background-music.mp3" loop></audio>
+    <div id="footer">
+        <button class="footer-button" onclick="window.location.href='index.html'">
+            <img src="home.png" alt="Home">
+        </button>
+        <button class="footer-button" onclick="window.location.href='tasks.html'">
+            <img src="tasks.png" alt="Tasks">
+        </button>
+        <button class="footer-button" onclick="window.location.href='airdrop.html'">
+            <img src="airdrop.png" alt="Airdrop">
+        </button>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

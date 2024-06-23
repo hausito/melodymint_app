@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Airdrop - Melody Mint</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      height: 100vh;
+      margin: 0;
+      background-color: #f9f9f9;
+    }
+
+    #header {
+      padding: 20px;
+      text-align: center;
+      width: 100%;
+      background-color: #fff;
+      border-bottom: 1px solid #ccc;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: center;
+    }
+
+    #logo {
+      max-width: 150px;
+      height: auto;
+    }
+
+    #content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      flex-grow: 1;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #textButton {
+      font-size: 24px;
+      color: #333;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    #footer {
+      display: flex;
+      justify-content: space-around;
+      background-color: #f0f0f0;
+      padding: 10px 0;
+      width: 100%;
+      box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .footer-button {
+      flex-grow: 1;
+      text-align: center;
+      padding: 5px 0;
+      margin: 0 5px;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+    }
+
+    .footer-button img {
+      max-width: 30px;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <img id="logo" src="logo.png" alt="Logo">
+  </div>
+
+  <div id="content">
+    <p id="textButton">Airdrop Coming Soon</p>
+  </div>
+
+  <div id="footer">
+    <button class="footer-button" onclick="window.location.href='index.html'">
+        <img src="home.png" alt="Home">
+    </button>
+    <button class="footer-button" onclick="window.location.href='tasks.html'">
+        <img src="tasks.png" alt="Tasks">
+    </button>
+    <button class="footer-button">
+        <img src="airdrop.png" alt="Airdrop">
+    </button>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

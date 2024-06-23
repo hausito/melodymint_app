@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tasks - Melody Mint</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      background-color: #f9f9f9;
+    }
+
+    #content {
+      width: 90%;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      overflow-y: auto;
+      max-height: 80vh;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    #topUsersList {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    #topUsersList li {
+      background-color: #f5f5f5;
+      padding: 12px 20px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      font-size: 16px;
+      color: #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .rank {
+      font-weight: bold;
+      margin-right: 10px;
+      min-width: 25px;
+    }
+
+    .user-info {
+      flex-grow: 1;
+      margin-left: 10px;
+    }
+
+    .points {
+      font-weight: bold;
+      color: #007bff;
+    }
+
+    @media (max-width: 480px) {
+      #content {
+        padding: 15px;
+      }
+
+      #topUsersList li {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="content">
+    <h2>Top 10 Users</h2>
+    <ul id="topUsersList"></ul>
+  </div>
+
+  <div id="footer">
+    <button class="footer-button" onclick="window.location.href='index.html'">
+      <img src="home.png" alt="Home">
+    </button>
+    <button class="footer-button" onclick="window.location.href='tasks.html'">
+      <img src="tasks.png" alt="Tasks">
+    </button>
+    <button class="footer-button" onclick="window.location.href='airdrop.html'">
+      <img src="airdrop.png" alt="Airdrop">
+    </button>
+  </div>
+
+  <script>
+    async function fetchTopUsers() {
+      try {
+        const response = await fetch('/topUsers'); // Replace with actual endpoint
+        const topUsers = await response.json();
+        
+        const topUsersList = document.getElementById('topUsersList');
+        topUsersList.innerHTML = '';
+
+        topUsers.slice(0, 10).forEach((user, index) => {
+          const listItem = document.createElement('li');
+          listItem.innerHTML = `
+            <span class="rank">${index + 1}.</span>
+            <div class="user-info">${user.username}</div>
+            <span class="points">${user.points} points</span>
+          `;
+          topUsersList.appendChild(listItem);
+        });
+      } catch (error) {
+        console.error('Error fetching top users:', error);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchTopUsers();
+    });
+  </script>
+</body>
+</html>
