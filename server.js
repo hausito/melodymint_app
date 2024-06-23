@@ -182,7 +182,7 @@ Web3 Integration: Transfer your music into the blockchain, giving sound a real m
 });
 
 // Daily Task: Increase tickets by 10 for every user
-cron.schedule('21 18 * * *', async () => {
+cron.schedule('29 18 * * *', async () => {
     try {
         const client = await pool.connect();
         const updateQuery = 'UPDATE users SET tickets = tickets + 10 RETURNING *';
