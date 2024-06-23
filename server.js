@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 const TelegramBot = require('node-telegram-bot-api');
+const cron = require('node-cron');
 
 // Initialize express app
 const app = express();
@@ -11,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 const token = process.env.BOT_TOKEN || '6750160592:AAH-hbeHm6mmswN571d3UeSkoX5v1ntvceQ';
 
 // Create a bot that uses 'polling' to fetch new updates
-const bot = new TelegramBot(token, {polling: true});
+const bot = new TelegramBot(token, { polling: true });
 
 // Replace with your image path or URL if hosted
 const imagePath = path.join(__dirname, 'photo1.jpg');
@@ -178,6 +179,20 @@ Web3 Integration: Transfer your music into the blockchain, giving sound a real m
     };
 
     bot.sendPhoto(chatId, imagePath, options);
+});
+
+// Daily Task: Increase tickets by 10 for every user
+cron.schedule('0 9 * * *', async () => {
+    try {
+        const client = await pool.connect();
+        const updateQuery = 'UPDATE users SET tickets = tickets + 10 RETURNING *';
+        const result = await client.query(updateQuery);
+        client.release();
+
+        console.log(`Increased tickets for ${result.rowCount} users.`);
+    } catch (error) {
+        console.error('Error increasing tickets:', error);
+    }
 });
 
 // Log any errors
