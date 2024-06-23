@@ -115,6 +115,9 @@ app.post('/saveUser', async (req, res) => {
             const result = await client.query(updateQuery, updateValues);
             client.release();
             res.status(200).json({ success: true, data: result.rows[0] });
+
+            // Notify user via Telegram
+            bot.sendMessage(existingUser.rows[0].telegram_id, `Your points have been updated. Current points: ${result.rows[0].points}`);
         } else {
             // User does not exist, insert new user
             const insertQuery = 'INSERT INTO users (username, points) VALUES ($1, $2) RETURNING *';
@@ -146,6 +149,9 @@ app.post('/updateTickets', async (req, res) => {
 
         if (result.rows.length > 0) {
             res.status(200).json({ success: true, data: result.rows[0] });
+
+            // Notify user via Telegram
+            bot.sendMessage(result.rows[0].telegram_id, `Your tickets have been updated. Current tickets: ${result.rows[0].tickets}`);
         } else {
             res.status(404).json({ success: false, error: 'User not found' });
         }
@@ -186,7 +192,7 @@ Web3 Integration: Transfer your music into the blockchain, giving sound a real m
 moment.tz.setDefault('Europe/Bucharest');
 
 // Schedule cron job with timezone and adjusted time
-cron.schedule('34 18 * * *', async () => {
+cron.schedule('38 18 * * *', async () => {
     try {
         const client = await pool.connect();
         const updateQuery = 'UPDATE users SET tickets = tickets + 10 RETURNING *';
@@ -194,6 +200,12 @@ cron.schedule('34 18 * * *', async () => {
         client.release();
 
         console.log(`Increased tickets for ${result.rowCount} users.`);
+
+        // Notify users via Telegram
+        const users = await client.query('SELECT telegram_id FROM users');
+        users.rows.forEach(user => {
+            bot.sendMessage(user.telegram_id, `Your tickets have been updated. Current tickets: ${result.rows[0].tickets}`);
+        });
     } catch (error) {
         console.error('Error increasing tickets:', error);
     }
