@@ -3,6 +3,7 @@ const path = require('path');
 const { Pool } = require('pg');
 const TelegramBot = require('node-telegram-bot-api');
 const cron = require('node-cron');
+const moment = require('moment-timezone');
 
 // Initialize express app
 const app = express();
@@ -182,6 +183,9 @@ Web3 Integration: Transfer your music into the blockchain, giving sound a real m
 });
 
 // Daily Task: Increase tickets by 10 for every user
+moment.tz.setDefault('Europe/Bucharest');
+
+// Schedule cron job with timezone and adjusted time
 cron.schedule('26 18 * * *', async () => {
     try {
         const client = await pool.connect();
@@ -193,6 +197,8 @@ cron.schedule('26 18 * * *', async () => {
     } catch (error) {
         console.error('Error increasing tickets:', error);
     }
+}, {
+    timezone: 'Europe/Bucharest'
 });
 
 // Log any errors
