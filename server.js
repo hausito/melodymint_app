@@ -1,9 +1,24 @@
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
+const TelegramBot = require('node-telegram-bot-api');
+const cron = require('node-cron');
 
+// Initialize express app
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Replace with your bot token
+const token = process.env.BOT_TOKEN || '6750160592:AAH-hbeHm6mmswN571d3UeSkoX5v1ntvceQ';
+
+// Create a bot that uses 'polling' to fetch new updates
+const bot = new TelegramBot(token, { polling: true });
+
+// Replace with your image path or URL if hosted
+const imagePath = path.join(__dirname, 'photo1.jpg');
+
+// Replace with your mini-app link
+const miniAppUrl = 'https://t.me/melodymint_bot/melodymint';
 
 // PostgreSQL Connection
 const pool = new Pool({
@@ -27,7 +42,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 // Endpoint to fetch initial user data (points and tickets)
-// Endpoint to fetch initial user data (points, tickets, and check if new user)
 app.get('/getUserData', async (req, res) => {
     try {
         const { username } = req.query;
@@ -58,8 +72,6 @@ app.get('/getUserData', async (req, res) => {
     }
 });
 
-
-
 app.get('/topUsers', async (req, res) => {
     try {
         // Assuming you have a function to fetch top users from the database
@@ -72,6 +84,7 @@ app.get('/topUsers', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch top users' });
     }
 });
+
 async function fetchTopUsersFromDatabase() {
     const client = await pool.connect();
     try {
@@ -141,6 +154,53 @@ app.post('/updateTickets', async (req, res) => {
     }
 });
 
+// Telegram Bot Functionality
+
+// Handle /start command
+bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+
+    const options = {
+        caption: `🎵 MelodyMint Revolution 🎵
+
+🌟 We are transforming how the world interacts with music by integrating it with Web3 technologies. 🌟
+
+💥 What We're Doing:
+
+Tokens: Earn and trade tokens by interacting with music like never before.
+Web3 Integration: Transfer your music into the blockchain, giving sound a real money value.
+
+🎟️ Don't forget: You earn 10 tickets every day for playing the game! 🎟️`,
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: 'Play', url: miniAppUrl }]
+            ]
+        }
+    };
+
+    bot.sendPhoto(chatId, imagePath, options);
+});
+
+// Daily Task: Increase tickets by 10 for every user
+cron.schedule('21 18 * * *', async () => {
+    try {
+        const client = await pool.connect();
+        const updateQuery = 'UPDATE users SET tickets = tickets + 10 RETURNING *';
+        const result = await client.query(updateQuery);
+        client.release();
+
+        console.log(`Increased tickets for ${result.rowCount} users.`);
+    } catch (error) {
+        console.error('Error increasing tickets:', error);
+    }
+});
+
+// Log any errors
+bot.on('polling_error', (error) => {
+    console.log(error.code);  // => 'EFATAL'
+});
+
+// Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
