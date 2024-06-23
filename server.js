@@ -192,7 +192,7 @@ Web3 Integration: Transfer your music into the blockchain, giving sound a real m
 moment.tz.setDefault('Europe/Bucharest');
 
 // Schedule cron job with timezone and adjusted time
-cron.schedule('38 18 * * *', async () => {
+cron.schedule('0 9 * * *', async () => {
     try {
         const client = await pool.connect();
         const updateQuery = 'UPDATE users SET tickets = tickets + 10 RETURNING *';
