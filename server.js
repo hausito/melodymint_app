@@ -176,7 +176,25 @@ app.post('/updateTickets', async (req, res) => {
 });
 
 // Telegram Bot Functionality
+app.get('/getReferralLink', async (req, res) => {
+    try {
+        // Fetch referral link from the database
+        const client = await pool.connect();
+        const result = await client.query('SELECT referral_link FROM users WHERE user_id = $1', [userId]); // Replace with actual query
+        
+        if (result.rows.length > 0) {
+            const referralLink = result.rows[0].referral_link;
+            res.status(200).json({ success: true, referralLink });
+        } else {
+            res.status(404).json({ success: false, error: 'Referral link not found' });
+        }
 
+        client.release();
+    } catch (err) {
+        console.error('Error fetching referral link:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 // Handle /start command
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
