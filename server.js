@@ -117,23 +117,25 @@ app.post('/saveUser', async (req, res) => {
             res.status(200).json({ success: true, data: result.rows[0] });
 
             // Notify user via Telegram
-            bot.sendMessage(existingUser.rows[0].telegram_id, `Your points have been updated. Current points: ${result.rows[0].points}`);
+            // Example: bot.sendMessage(existingUser.rows[0].telegram_id, `Your points have been updated. Current points: ${result.rows[0].points}`);
         } else {
             // User does not exist, insert new user
             const insertQuery = 'INSERT INTO users (username, points, referral_link) VALUES ($1, $2, $3) RETURNING *';
-            const referralLink = `ref${result.rows[0].user_id}`;
+            // Generate referral link (ref<ID>)
+            const result = await client.query('INSERT INTO users (username) VALUES ($1) RETURNING user_id', [username]);
+            const userId = result.rows[0].user_id;
+            const referralLink = `ref${userId}`;
             const insertValues = [username, points, referralLink];
-            const result = await client.query(insertQuery, insertValues);
+            await client.query(insertQuery, insertValues);
             client.release();
-            res.status(200).json({ success: true, data: result.rows[0] });
-
-            // Notify user via Telegram or perform any other actions
+            res.status(200).json({ success: true, data: { points, referral_link: referralLink } });
         }
     } catch (err) {
         console.error('Error saving user:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
 
 
 // Endpoint to update tickets
