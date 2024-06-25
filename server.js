@@ -72,33 +72,6 @@ app.get('/getUserData', async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
-app.get('/getReferralInfo', async (req, res) => {
-    try {
-        const { username } = req.query;
-
-        if (!username) {
-            return res.status(400).json({ success: false, error: 'Username is required' });
-        }
-
-        const client = await pool.connect();
-        const result = await client.query('SELECT referral_link, friends_invited FROM users WHERE username = $1', [username]);
-
-        if (result.rows.length > 0) {
-            res.status(200).json({
-                success: true,
-                referralLink: result.rows[0].referral_link,
-                friendsInvited: result.rows[0].friends_invited,
-            });
-        } else {
-            res.status(404).json({ success: false, error: 'User not found' });
-        }
-
-        client.release();
-    } catch (err) {
-        console.error('Error fetching referral info:', err);
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
 
 app.get('/topUsers', async (req, res) => {
     try {
