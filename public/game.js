@@ -37,8 +37,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let points = 0;
     let tickets = 0;
+    let referralLink = ''; // Variable to hold referral link
 
-    // Fetch initial user data (points and tickets)
+    // Fetch initial user data (points, tickets, and referral link)
     const fetchUserData = async () => {
         try {
             const response = await fetch(`/getUserData?username=${encodeURIComponent(userInfo.textContent)}`);
@@ -46,8 +47,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.success) {
                 points = data.points;
                 tickets = data.tickets;
-                userPoints.textContent = ` ${points}`;
-                userTickets.textContent = ` ${tickets}`;
+                referralLink = data.referral_link; // Assuming this is how referral link is retrieved
+                userPoints.textContent = `Points: ${points}`;
+                userTickets.textContent = `Tickets: ${tickets}`;
+                // Update referral link in HTML
+                updateReferralLink(referralLink);
             } else {
                 console.error('Failed to fetch user data:', data.error);
             }
@@ -58,10 +62,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     fetchUserData();
 
+    // Function to update referral link in HTML
+    const updateReferralLink = (link) => {
+        // Assuming there's an element with id 'referralLink' in your HTML
+        const referralLinkElement = document.getElementById('referralLink');
+        if (referralLinkElement) {
+            referralLinkElement.textContent = link;
+        }
+    };
+
     playButton.addEventListener('click', async () => {
         if (tickets > 0) {
             tickets--;
-            userTickets.textContent = ` ${tickets}`;
+            userTickets.textContent = `Tickets: ${tickets}`;
 
             // Update tickets on the server
             try {
@@ -87,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         startScreen.style.display = 'none';
         footer.style.display = 'none';
-        header.style.display = 'none'; 
+        header.style.display = 'none';
         startMusic();
         initGame();
         lastTimestamp = performance.now();
@@ -188,30 +201,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         return /Mobi|Android/i.test(navigator.userAgent);
     }
 
-function addNewTile() {
-    const attempts = 100;
-    const lastColumn = tiles.length > 0 ? Math.floor(tiles[tiles.length - 1].x / (TILE_WIDTH + SEPARATOR)) : -1;
+    function addNewTile() {
+        const attempts = 100;
+        const lastColumn = tiles.length > 0 ? Math.floor(tiles[tiles.length - 1].x / (TILE_WIDTH + SEPARATOR)) : -1;
 
-    for (let i = 0; i < attempts; i++) {
-        let newColumn;
-        do {
-            newColumn = Math.floor(Math.random() * COLUMNS);
-        } while (newColumn === lastColumn);
+        for (let i = 0; i < attempts; i++) {
+            let newColumn;
+            do {
+                newColumn = Math.floor(Math.random() * COLUMNS);
+            } while (newColumn === lastColumn);
 
-        const newTileX = newColumn * (TILE_WIDTH + SEPARATOR);
-        const newTileY = Math.min(...tiles.map(tile => tile.y)) - TILE_HEIGHT - VERTICAL_GAP;
+            const newTileX = newColumn * (TILE_WIDTH + SEPARATOR);
+            const newTileY = Math.min(...tiles.map(tile => tile.y)) - TILE_HEIGHT - VERTICAL_GAP;
 
-        if (!tiles.some(tile => {
-            const rect = { x: newTileX, y: newTileY, width: TILE_WIDTH, height: TILE_HEIGHT };
-            return tile.y < rect.y + rect.height && tile.y + tile.height > rect.y &&
-                tile.x < rect.x + rect.width && tile.x + tile.width > rect.x;
-        })) {
-            tiles.push(new Tile(newTileX, newTileY));
-            break;
+            if (!tiles.some(tile => {
+                const rect = { x: newTileX, y: newTileY, width: TILE_WIDTH, height: TILE_HEIGHT };
+                return tile.y < rect.y + rect.height && tile.y + tile.height > rect.y &&
+                    tile.x < rect.x + rect.width && tile.x + tile.width > rect.x;
+            })) {
+                tiles.push(new Tile(newTileX, newTileY));
+                break;
+            }
         }
     }
-}
-
 
     function handleClick(event) {
         if (!gameRunning) return;
@@ -253,14 +265,14 @@ function addNewTile() {
     function gameLoop(timestamp) {
         if (!gameRunning) return;
 
-        const deltaTime = (timestamp - lastTimestamp) / 1000; 
+        const deltaTime = (timestamp - lastTimestamp) / 1000;
         lastTimestamp = timestamp;
 
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
         let outOfBounds = false;
         tiles.forEach(tile => {
-            tile.move(TILE_SPEED * deltaTime * 60); 
+            tile.move(TILE_SPEED * deltaTime * 60);
             tile.updateOpacity();
             if (tile.isOutOfBounds()) {
                 outOfBounds = true;
@@ -299,7 +311,7 @@ function addNewTile() {
         ctx.fillStyle = SKY_BLUE;
         ctx.fillText(`SCORE: ${score}`, WIDTH / 2, 30);
 
-        TILE_SPEED += SPEED_INCREMENT * deltaTime * 60; 
+        TILE_SPEED += SPEED_INCREMENT * deltaTime * 60;
 
         requestAnimationFrame(gameLoop);
     }
@@ -352,8 +364,8 @@ function addNewTile() {
 
             const result = await response.json();
             if (result.success) {
-                points = result.data.points; 
-                userPoints.textContent = `Points: ${points}`; 
+                points = result.data.points;
+                userPoints.textContent = `Points: ${points}`;
             } else {
                 console.error('Error saving user:', result.error);
             }
