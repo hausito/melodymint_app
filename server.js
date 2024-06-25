@@ -104,40 +104,36 @@ async function fetchTopUsersFromDatabase() {
 }
 
 // Endpoint to handle saving Telegram usernames and points
-app.post('/saveUser', async (req, res) => {
-    const { username, points } = req.body;
-
-    if (!username || points === undefined) {
-        return res.status(400).send('Username and points are required');
-    }
-
+app.get('/getUserData', async (req, res) => {
     try {
-        const client = await pool.connect();
-        const existingUser = await client.query('SELECT * FROM users WHERE username = $1', [username]);
+        const { username } = req.query;
 
-        if (existingUser.rows.length > 0) {
-            // User exists, update points
-            const updateQuery = 'UPDATE users SET points = points + $1 WHERE username = $2 RETURNING *';
-            const updateValues = [points, username];
-            const result = await client.query(updateQuery, updateValues);
-            client.release();
-            res.status(200).json({ success: true, data: result.rows[0] });
-
-            // Notify user via Telegram
-            bot.sendMessage(existingUser.rows[0].telegram_id, `Your points have been updated. Current points: ${result.rows[0].points}`);
-        } else {
-            // User does not exist, insert new user
-            const insertQuery = 'INSERT INTO users (username, points) VALUES ($1, $2) RETURNING *';
-            const insertValues = [username, points];
-            const result = await client.query(insertQuery, insertValues);
-            client.release();
-            res.status(200).json({ success: true, data: result.rows[0] });
+        if (!username) {
+            return res.status(400).json({ success: false, error: 'Username is required' });
         }
+
+        const client = await pool.connect();
+        const result = await client.query('SELECT points, tickets FROM users WHERE username = $1', [username]);
+
+        if (result.rows.length > 0) {
+            // User exists
+            res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
+        } else {
+            // User does not exist, insert new user with default values
+            const insertQuery = 'INSERT INTO users (username, points, tickets) VALUES ($1, $2, $3) RETURNING *';
+            const insertValues = [username, 0, 100]; // Default values for points and tickets
+            const insertResult = await client.query(insertQuery, insertValues);
+
+            res.status(200).json({ success: true, points: insertResult.rows[0].points, tickets: insertResult.rows[0].tickets });
+        }
+
+        client.release();
     } catch (err) {
-        console.error('Error saving user:', err);
+        console.error('Error in getUserData endpoint:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
 
 // Endpoint to update tickets
 app.post('/updateTickets', async (req, res) => {
