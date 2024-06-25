@@ -1,238 +1,364 @@
-const express = require('express');
-const path = require('path');
-const { Pool } = require('pg');
-const TelegramBot = require('node-telegram-bot-api');
-const cron = require('node-cron');
-const moment = require('moment-timezone');
+document.addEventListener('DOMContentLoaded', async () => {
+    const preloadImages = () => {
+        const images = ['home.png', 'tasks.png', 'airdrop.png'];
+        images.forEach((src) => {
+            const img = new Image();
+            img.src = src;
+        });
+    };
+    preloadImages();
 
-// Initialize express app
-const app = express();
-const PORT = process.env.PORT || 3000;
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const backgroundMusic = new Audio('background-music.mp3');
+    backgroundMusic.loop = true;
+    backgroundMusic.volume = 0.5;
 
-// Replace with your bot token
-const token = process.env.BOT_TOKEN || '6750160592:AAH-hbeHm6mmswN571d3UeSkoX5v1ntvceQ';
+    const startScreen = document.getElementById('startScreen');
+    const playButton = document.getElementById('playButton');
+    const tasksButton = document.getElementById('tasksButton');
+    const upgradeButton = document.getElementById('upgradeButton');
+    const userInfo = document.getElementById('userInfo');
+    const footer = document.getElementById('footer');
+    const userPoints = document.getElementById('points');
+    const userTickets = document.getElementById('ticketsInfo');
+    const header = document.getElementById('header');
 
-// Create a bot that uses 'polling' to fetch new updates
-const bot = new TelegramBot(token, { polling: true });
+    // Initialize Telegram Web Apps API
+    const tg = window.Telegram.WebApp;
+    const user = tg.initDataUnsafe?.user;
 
-// Replace with your image path or URL if hosted
-const imagePath = path.join(__dirname, 'photo1.jpg');
-
-// Replace with your mini-app link
-const miniAppUrl = 'https://t.me/melodymint_bot/melodymint';
-
-// PostgreSQL Connection
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false,
-    },
-});
-
-// Connect to PostgreSQL
-pool.connect((err, client, done) => {
-    if (err) {
-        throw err;
-    }
-    console.log('Connected to PostgreSQL...');
-    done();
-});
-
-// Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
-
-// Endpoint to fetch initial user data (points and tickets)
-app.get('/getUserData', async (req, res) => {
-    try {
-        const { username } = req.query;
-
-        if (!username) {
-            return res.status(400).json({ success: false, error: 'Username is required' });
-        }
-
-        const client = await pool.connect();
-        const result = await client.query('SELECT points, tickets FROM users WHERE username = $1', [username]);
-
-        if (result.rows.length > 0) {
-            // User exists
-            res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
-        } else {
-            // User does not exist, insert new user with default values
-            const insertQuery = `
-                INSERT INTO users (username, points, tickets, referral_link, friends_invited)
-                VALUES ($1, $2, $3, $4, $5)
-                RETURNING user_id, points, tickets
-            `;
-            const insertValues = [username, 0, 100, '', 0];
-            const insertResult = await client.query(insertQuery, insertValues);
-
-            // Generate referral link using the new user's ID
-            const userId = insertResult.rows[0].user_id;
-            const referralLink = `ref${userId}`;
-
-            // Update the user record with the correct referral link
-            await client.query('UPDATE users SET referral_link = $1 WHERE user_id = $2', [referralLink, userId]);
-
-            res.status(200).json({ success: true, points: insertResult.rows[0].points, tickets: insertResult.rows[0].tickets });
-        }
-
-        client.release();
-    } catch (err) {
-        console.error('Error in getUserData endpoint:', err);
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-
-
-
-app.get('/topUsers', async (req, res) => {
-    try {
-        // Assuming you have a function to fetch top users from the database
-        const topUsers = await fetchTopUsersFromDatabase(); // Implement this function
-        
-        // Respond with the top users data in JSON format
-        res.status(200).json(topUsers);
-    } catch (error) {
-        console.error('Error fetching top users:', error);
-        res.status(500).json({ error: 'Failed to fetch top users' });
-    }
-});
-
-async function fetchTopUsersFromDatabase() {
-    const client = await pool.connect();
-    try {
-        const result = await client.query('SELECT username, points FROM users ORDER BY points DESC LIMIT 10');
-        return result.rows; // Assuming rows contain username and points
-    } finally {
-        client.release();
-    }
-}
-
-// Endpoint to handle saving Telegram usernames and points
-app.post('/saveUser', async (req, res) => {
-    const { username, points } = req.body;
-
-    if (!username || points === undefined) {
-        return res.status(400).send('Username and points are required');
+    // Set username or fallback to "Username"
+    if (user) {
+        userInfo.textContent = user.username || `${user.first_name} ${user.last_name}`;
+    } else {
+        userInfo.textContent = 'Username';
     }
 
-    try {
-        const client = await pool.connect();
-        const existingUser = await client.query('SELECT * FROM users WHERE username = $1', [username]);
+    let points = 0;
+    let tickets = 0;
 
-        if (existingUser.rows.length > 0) {
-            // User exists, update points
-            const updateQuery = 'UPDATE users SET points = points + $1 WHERE username = $2 RETURNING points, tickets';
-            const updateValues = [points, username];
-            const result = await client.query(updateQuery, updateValues);
-            client.release();
-            res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
-
-            // Notify user via Telegram
-            bot.sendMessage(existingUser.rows[0].telegram_id, `Your points have been updated. Current points: ${result.rows[0].points}`);
-        } else {
-            // User does not exist, insert new user
-            const insertQuery = 'INSERT INTO users (username, points, tickets) VALUES ($1, $2, $3) RETURNING points, tickets';
-            const insertValues = [username, points, 100]; // Default tickets set to 100
-            const result = await client.query(insertQuery, insertValues);
-            client.release();
-            res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
-        }
-    } catch (err) {
-        console.error('Error saving user:', err);
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-// Endpoint to update tickets
-app.post('/updateTickets', async (req, res) => {
-    const { username, tickets } = req.body;
-
-    if (!username || tickets === undefined) {
-        return res.status(400).send('Username and tickets are required');
-    }
-
-    try {
-        const client = await pool.connect();
-        const updateQuery = 'UPDATE users SET tickets = $1 WHERE username = $2 RETURNING *';
-        const updateValues = [tickets, username];
-        const result = await client.query(updateQuery, updateValues);
-        client.release();
-
-        if (result.rows.length > 0) {
-            res.status(200).json({ success: true, data: result.rows[0] });
-
-            // Notify user via Telegram
-            bot.sendMessage(result.rows[0].telegram_id, `Your tickets have been updated. Current tickets: ${result.rows[0].tickets}`);
-        } else {
-            res.status(404).json({ success: false, error: 'User not found' });
-        }
-    } catch (err) {
-        console.error('Error updating tickets:', err);
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-// Telegram Bot Functionality
-
-// Handle /start command
-bot.onText(/\/start/, (msg) => {
-    const chatId = msg.chat.id;
-
-    const options = {
-        caption: `🎵 MelodyMint Revolution 🎵
-
-🌟 We are transforming how the world interacts with music by integrating it with Web3 technologies. 🌟
-
-💥 What We're Doing:
-
-Tokens: Earn and trade tokens by interacting with music like never before.
-Web3 Integration: Transfer your music into the blockchain, giving sound a real money value.
-
-🎟️ Don't forget: You earn 10 tickets every day for playing the game! 🎟️`,
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: 'Play', url: miniAppUrl }]
-            ]
+    // Fetch initial user data (points and tickets)
+    const fetchUserData = async () => {
+        try {
+            const response = await fetch(`/getUserData?username=${encodeURIComponent(userInfo.textContent)}`);
+            const data = await response.json();
+            if (data.success) {
+                points = data.points;
+                tickets = data.tickets;
+                userPoints.textContent = ` ${points}`;
+                userTickets.textContent = ` ${tickets}`;
+            } else {
+                console.error('Failed to fetch user data:', data.error);
+            }
+        } catch (error) {
+            console.error('Error fetching user data:', error);
         }
     };
 
-    bot.sendPhoto(chatId, imagePath, options);
-});
+    fetchUserData();
 
-// Daily Task: Increase tickets by 10 for every user
-moment.tz.setDefault('Europe/Bucharest');
+    playButton.addEventListener('click', async () => {
+        if (tickets > 0) {
+            tickets--;
+            userTickets.textContent = ` ${tickets}`;
 
-// Schedule cron job with timezone and adjusted time
-cron.schedule('0 9 * * *', async () => {
-    try {
-        const client = await pool.connect();
-        const updateQuery = 'UPDATE users SET tickets = tickets + 10 RETURNING *';
-        const result = await client.query(updateQuery);
-        client.release();
+            // Update tickets on the server
+            try {
+                const response = await fetch('/updateTickets', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: userInfo.textContent, tickets }),
+                });
 
-        console.log(`Increased tickets for ${result.rowCount} users.`);
+                const result = await response.json();
+                if (!result.success) {
+                    console.error('Error updating tickets:', result.error);
+                }
+            } catch (error) {
+                console.error('Error updating tickets:', error);
+            }
+        } else {
+            alert('No more tickets available!');
+            return;
+        }
 
-        // Notify users via Telegram
-        const users = await client.query('SELECT telegram_id FROM users');
-        users.rows.forEach(user => {
-            bot.sendMessage(user.telegram_id, `Your tickets have been updated. Current tickets: ${result.rows[0].tickets}`);
-        });
-    } catch (error) {
-        console.error('Error increasing tickets:', error);
+        startScreen.style.display = 'none';
+        footer.style.display = 'none';
+        header.style.display = 'none'; 
+        startMusic();
+        initGame();
+        lastTimestamp = performance.now();
+        requestAnimationFrame(gameLoop);
+    });
+
+    tasksButton.addEventListener('click', () => {
+        alert('Tasks: Coming Soon!');
+    });
+
+    upgradeButton.addEventListener('click', () => {
+        alert('Upgrade: Coming Soon!');
+    });
+
+    const WIDTH = canvas.width;
+    const HEIGHT = canvas.height;
+
+    const TILE_COLOR = '#2F3C7E';
+    const BORDER_COLOR = '#FBEAEB';
+    const SKY_BLUE = '#87CEEB';
+    const SHADOW_COLOR = '#000080';
+
+    const COLUMNS = 4;
+    const SEPARATOR = 0; // No space between tiles
+    const VERTICAL_GAP = 5;
+    const TILE_WIDTH = (WIDTH - (COLUMNS - 1) * SEPARATOR) / COLUMNS;
+    const TILE_HEIGHT = HEIGHT / 4 - VERTICAL_GAP;
+
+    let TILE_SPEED;
+    const SPEED_INCREMENT = 0.0018;
+
+    let tiles = [];
+    let score = 0;
+    let gameRunning = true;
+
+    class Tile {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.width = TILE_WIDTH;
+            this.height = TILE_HEIGHT;
+            this.clicked = false;
+            this.opacity = 1;
+        }
+
+        move(speed) {
+            this.y += speed;
+        }
+
+        draw() {
+            const gradient = ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y + this.height);
+            gradient.addColorStop(0, '#2F3C7E');
+            gradient.addColorStop(1, '#FF6F61');
+            ctx.fillStyle = gradient;
+            ctx.globalAlpha = this.opacity;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.globalAlpha = 1;
+        }
+
+        isClicked(mouseX, mouseY) {
+            return this.x <= mouseX && this.x + this.width >= mouseX &&
+                   this.y <= mouseY && this.y + this.height >= mouseY;
+        }
+
+        isOutOfBounds() {
+            return this.y + this.height >= HEIGHT && !this.clicked;
+        }
+
+        startDisappearing() {
+            this.clicked = true;
+            this.opacity -= 0.05;
+        }
+
+        updateOpacity() {
+            if (this.clicked && this.opacity > 0) {
+                this.opacity -= 0.05;
+            }
+        }
     }
-}, {
-    timezone: 'Europe/Bucharest'
-});
 
-// Log any errors
-bot.on('polling_error', (error) => {
-    console.log(error.code);  // => 'EFATAL'
-});
+    function initGame() {
+        tiles = [];
+        for (let i = 0; i < 4; i++) {
+            const x = Math.floor(Math.random() * COLUMNS) * (TILE_WIDTH + SEPARATOR);
+            const y = -(i * (TILE_HEIGHT + VERTICAL_GAP)) - TILE_HEIGHT;
+            tiles.push(new Tile(x, y));
+        }
+        score = 0;
+        TILE_SPEED = 4;
+        gameRunning = true;
 
-// Start the server
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+        backgroundMusic.play().catch(function(error) {
+            console.error('Error playing audio:', error);
+        });
+    }
+
+    function isMobileDevice() {
+        return /Mobi|Android/i.test(navigator.userAgent);
+    }
+
+function addNewTile() {
+    const attempts = 100;
+    const lastColumn = tiles.length > 0 ? Math.floor(tiles[tiles.length - 1].x / (TILE_WIDTH + SEPARATOR)) : -1;
+
+    for (let i = 0; i < attempts; i++) {
+        let newColumn;
+        do {
+            newColumn = Math.floor(Math.random() * COLUMNS);
+        } while (newColumn === lastColumn);
+
+        const newTileX = newColumn * (TILE_WIDTH + SEPARATOR);
+        const newTileY = Math.min(...tiles.map(tile => tile.y)) - TILE_HEIGHT - VERTICAL_GAP;
+
+        if (!tiles.some(tile => {
+            const rect = { x: newTileX, y: newTileY, width: TILE_WIDTH, height: TILE_HEIGHT };
+            return tile.y < rect.y + rect.height && tile.y + tile.height > rect.y &&
+                tile.x < rect.x + rect.width && tile.x + tile.width > rect.x;
+        })) {
+            tiles.push(new Tile(newTileX, newTileY));
+            break;
+        }
+    }
+}
+
+
+    function handleClick(event) {
+        if (!gameRunning) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const mouseX = (event.clientX - rect.left) * scaleX;
+        const mouseY = (event.clientY - rect.top) * scaleY;
+
+        let clickedOnTile = false;
+        tiles.forEach(tile => {
+            if (tile.isClicked(mouseX, mouseY) && !tile.clicked) {
+                tile.startDisappearing();
+                clickedOnTile = true;
+                score++;
+                addNewTile();
+            }
+        });
+
+        if (!clickedOnTile) {
+            gameRunning = false;
+            gameOver();
+        }
+    }
+
+    canvas.addEventListener('click', handleClick);
+    canvas.addEventListener('touchstart', (event) => {
+        event.preventDefault();
+        const touch = event.touches[0];
+        handleClick({
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+        });
+    });
+
+    let lastTimestamp = 0;
+
+    function gameLoop(timestamp) {
+        if (!gameRunning) return;
+
+        const deltaTime = (timestamp - lastTimestamp) / 1000; 
+        lastTimestamp = timestamp;
+
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+        let outOfBounds = false;
+        tiles.forEach(tile => {
+            tile.move(TILE_SPEED * deltaTime * 60); 
+            tile.updateOpacity();
+            if (tile.isOutOfBounds()) {
+                outOfBounds = true;
+            }
+            tile.draw();
+        });
+
+        if (outOfBounds) {
+            gameRunning = false;
+            gameOver();
+            return;
+        }
+
+        tiles = tiles.filter(tile => tile.y < HEIGHT && tile.opacity > 0);
+
+        while (tiles.length < 4) {
+            addNewTile();
+        }
+
+        // Draw vertical lines
+        ctx.strokeStyle = BORDER_COLOR;
+        ctx.lineWidth = 2;
+        for (let i = 1; i < COLUMNS; i++) {
+            const x = i * TILE_WIDTH;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, HEIGHT);
+            ctx.stroke();
+        }
+
+        ctx.fillStyle = SHADOW_COLOR;
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`SCORE: ${score}`, WIDTH / 2 + 2, 32);
+
+        ctx.fillStyle = SKY_BLUE;
+        ctx.fillText(`SCORE: ${score}`, WIDTH / 2, 30);
+
+        TILE_SPEED += SPEED_INCREMENT * deltaTime * 60; 
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function startMusic() {
+        backgroundMusic.play().catch(function(error) {
+            console.error('Error playing audio:', error);
+        });
+    }
+
+    tg.onEvent('themeChanged', function() {
+        const themeParams = tg.themeParams;
+        if (themeParams && themeParams.bg_color && !themeParams.bg_color.includes('unset') && !themeParams.bg_color.includes('none')) {
+            document.body.style.backgroundColor = themeParams.bg_color;
+        }
+    });
+
+    tg.ready().then(function() {
+        if (tg.themeParams) {
+            const themeParams = tg.themeParams;
+            if (themeParams.bg_color && !themeParams.bg_color.includes('unset') && !themeParams.bg_color.includes('none')) {
+                document.body.style.backgroundColor = themeParams.bg_color;
+            }
+        }
+        if (tg.initDataUnsafe?.user) {
+            userInfo.textContent = tg.initDataUnsafe.user.username || `${tg.initDataUnsafe.user.first_name} ${tg.initDataUnsafe.user.last_name}`;
+        } else {
+            userInfo.textContent = 'Username';
+        }
+        if (tg.initDataUnsafe?.is_explicitly_enabled) {
+            startMusic();
+        }
+    });
+
+    async function gameOver() {
+        await saveUser(userInfo.textContent, score);
+        const redirectURL = `transition.html?score=${score}`;
+        window.location.replace(redirectURL);
+    }
+
+    async function saveUser(username, scoreToAdd) {
+        try {
+            const response = await fetch('/saveUser', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, points: scoreToAdd }),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                points = result.data.points; 
+                userPoints.textContent = `Points: ${points}`; 
+            } else {
+                console.error('Error saving user:', result.error);
+            }
+        } catch (error) {
+            console.error('Error saving user:', error);
+        }
+    }
 });
