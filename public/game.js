@@ -333,31 +333,13 @@ function addNewTile() {
             startMusic();
         }
     });
-    const referralButton = document.getElementById('referralButton');
-    referralButton.addEventListener('click', async () => {
-        try {
-            const response = await fetch('/getReferralInfo', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+
+
+            const referralButton = document.getElementById('referralButton');
+            referralButton.addEventListener('click', () => {
+                window.location.href = 'friends.html';
             });
 
-            const data = await response.json();
-            if (data.success) {
-                alert(`Your referral link: ${data.referralLink}\nFriends invited: ${data.friendsInvited}`);
-            } else {
-                console.error('Error fetching referral info:', data.error);
-            }
-        } catch (error) {
-            console.error('Error fetching referral info:', error);
-        }
-    });
-    async function gameOver() {
-        await saveUser(userInfo.textContent, score);
-        const redirectURL = `transition.html?score=${score}`;
-        window.location.replace(redirectURL);
-    }
 
     async function saveUser(username, scoreToAdd) {
         try {
