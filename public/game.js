@@ -46,15 +46,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.success) {
                 points = data.points;
                 tickets = data.tickets;
-                userPoints.textContent = `Points: ${points}`;
-                userTickets.textContent = `Tickets: ${tickets}`;
-
-                // Display referral link if available
-                if (data.referral_link) {
-                    // Assuming you have an element to display referral link
-                    const referralLinkElement = document.getElementById('referralLink');
-                    referralLinkElement.textContent = `Referral Link: ${data.referral_link}`;
-                }
+                userPoints.textContent = ` ${points}`;
+                userTickets.textContent = ` ${tickets}`;
             } else {
                 console.error('Failed to fetch user data:', data.error);
             }
