@@ -120,8 +120,9 @@ app.post('/saveUser', async (req, res) => {
             bot.sendMessage(existingUser.rows[0].telegram_id, `Your points have been updated. Current points: ${result.rows[0].points}`);
         } else {
             // User does not exist, insert new user
-            const insertQuery = 'INSERT INTO users (username, points) VALUES ($1, $2) RETURNING *';
-            const insertValues = [username, points];
+            const insertQuery = 'INSERT INTO users (username, points, referral_link) VALUES ($1, $2, $3) RETURNING *';
+            const referralLink = `ref${result.rows[0].user_id}`;
+            const insertValues = [username, points, referralLink];
             const result = await client.query(insertQuery, insertValues);
             client.release();
             res.status(200).json({ success: true, data: result.rows[0] });
