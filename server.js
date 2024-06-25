@@ -52,23 +52,29 @@ app.get('/getUserData', async (req, res) => {
         }
 
         const client = await pool.connect();
-        const result = await client.query('SELECT user_id, points, tickets FROM users WHERE username = $1', [username]);
+        const result = await client.query('SELECT points, tickets FROM users WHERE username = $1', [username]);
 
         if (result.rows.length > 0) {
             // User exists
             res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
         } else {
             // User does not exist, insert new user with default values
-            const insertQuery = 'INSERT INTO users (username, points, tickets, referral_link) VALUES ($1, $2, $3, $4) RETURNING user_id, points, tickets';
-            
-            // Generate referral link based on user_id
-            const referralLink = `ref${result.rows[0].user_id}`; // Example: ref304 (assuming user_id is 304)
-
-            const insertValues = [username, 0, 100, referralLink];
+            const insertQuery = `
+                INSERT INTO users (username, points, tickets, referral_link, friends_invited)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING user_id, points, tickets
+            `;
+            const insertValues = [username, 0, 100, '', 0];
             const insertResult = await client.query(insertQuery, insertValues);
 
-            // Update response to include referral link
-            res.status(200).json({ success: true, points: insertResult.rows[0].points, tickets: insertResult.rows[0].tickets, referral_link: referralLink });
+            // Generate referral link using the new user's ID
+            const userId = insertResult.rows[0].user_id;
+            const referralLink = `ref${userId}`;
+
+            // Update the user record with the correct referral link
+            await client.query('UPDATE users SET referral_link = $1 WHERE user_id = $2', [referralLink, userId]);
+
+            res.status(200).json({ success: true, points: insertResult.rows[0].points, tickets: insertResult.rows[0].tickets });
         }
 
         client.release();
