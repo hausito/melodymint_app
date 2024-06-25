@@ -362,3 +362,23 @@ function addNewTile() {
         }
     }
 });
+document.getElementById('referralButton').addEventListener('click', async () => {
+    try {
+        const response = await fetch('/getReferralInfo', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alert(`Your referral link: ${data.referralLink}\nFriends invited: ${data.friendsInvited}`);
+        } else {
+            console.error('Error fetching referral info:', data.error);
+        }
+    } catch (error) {
+        console.error('Error fetching referral info:', error);
+    }
+});
+
