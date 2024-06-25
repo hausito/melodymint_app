@@ -43,6 +43,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 // Endpoint to fetch initial user data (points and tickets)
+// Endpoint to fetch initial user data (points and tickets) or insert new user
 app.get('/getUserData', async (req, res) => {
     try {
         const { username } = req.query;
@@ -52,25 +53,19 @@ app.get('/getUserData', async (req, res) => {
         }
 
         const client = await pool.connect();
-        const result = await client.query('SELECT points, tickets FROM users WHERE username = $1', [username]);
+        const result = await client.query('SELECT * FROM users WHERE username = $1', [username]);
 
         if (result.rows.length > 0) {
             // User exists
-            res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
+            res.status(200).json({ success: true, data: result.rows[0] });
         } else {
             // User does not exist, insert new user with default values
-            const insertQuery = 'INSERT INTO users (username, points, referral_link) VALUES ($1, $2, $3) RETURNING *';
-            const referralLink = `ref${result.rows[0].user_id}`; // Generate referral link (example: ref197)
-            const insertValues = [username, points, referralLink];
-            const result = await client.query(insertQuery, insertValues);
+            const insertQuery = 'INSERT INTO users (username, points, tickets, referral_link) VALUES ($1, $2, $3, $4) RETURNING *';
+            const referralLink = `ref${username.slice(0, 5)}`; // Example: refuserna
+            const insertValues = [username, 0, 100, referralLink];
+            const insertResult = await client.query(insertQuery, insertValues);
 
-
-            res.status(200).json({ success: true, data: {
-                username: result.rows[0].username,
-                points: result.rows[0].points,
-                referral_link: result.rows[0].referral_link
-            }});
-
+            res.status(200).json({ success: true, data: insertResult.rows[0] });
         }
 
         client.release();
@@ -79,6 +74,7 @@ app.get('/getUserData', async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
 
 app.get('/topUsers', async (req, res) => {
     try {
