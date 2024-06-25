@@ -1,109 +1,57 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Melody Mint</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Ensure Telegram SDK is available
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.expand();
-            }
-        });
-    </script>
-</head>
-<body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="360" height="640"></canvas>
-        <div id="header">
-            <div id="userInfo">Username</div>
-            <div id="pointsContainer">
-                <img src="points.png" alt="Points" class="icon">
-                <span id="points">Loading...</span>
-
-
-            </div>
-        </div>
-        <div id="startScreen">
-            <div id="newLayout">
-                <div id="ticketsContainer">
-                    <img src="tickets.png" alt="Tickets" class="icon">
-                    <span id="ticketsInfo">Loading...</span>
-                </div>
-                <button id="playButton">Play</button>
-                <button id="tasksButton" class="comingSoon">Tasks</button>
-                <button id="upgradeButton" class="comingSoon">Upgrade</button>
-                <button id="inviteFriendsButton" onclick="showReferralLink()">Invite Friends</button>
-            </div>
-        </div>
-    <div id="invitePopup" class="popup">
-    <div class="popup-content">
-        <span class="close" onclick="closePopup()">&times;</span>
-        <h2>Your Referral Link</h2>
-        <input type="text" id="referralLink" readonly>
-        <button id="copyButton" onclick="copyReferralLink()">Copy Link</button>
-    </div>
-</div>
-
-    <audio id="backgroundMusic" src="background-music.mp3" loop></audio>
-    <div id="footer">
-        <button class="footer-button" onclick="window.location.href='index.html'">
-            <img src="home.png" alt="Home">
-        </button>
-        <button class="footer-button" onclick="window.location.href='tasks.html'">
-            <img src="tasks.png" alt="Tasks">
-        </button>
-        <button class="footer-button" onclick="window.location.href='airdrop.html'">
-            <img src="airdrop.png" alt="Airdrop">
-        </button>
-    </div>
-
-    <script src="game.js"></script>
-    <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        const inviteButton = document.createElement('button');
-        inviteButton.textContent = 'Invite Friends';
-        inviteButton.classList.add('invite-button');
-        document.body.appendChild(inviteButton);
-
-        inviteButton.addEventListener('click', async () => {
-            try {
-                const response = await fetch('/getReferralLink'); // Replace with actual endpoint
-                const data = await response.json();
-
-                if (data.success) {
-                    const referralLink = data.referralLink;
-                    document.getElementById('referralLink').value = referralLink;
-                    document.getElementById('invitePopup').style.display = 'flex';
-                } else {
-                    console.error('Failed to fetch referral link:', data.error);
-                    alert('Failed to fetch referral link. Please try again later.');
-                }
-            } catch (error) {
-                console.error('Error fetching referral link:', error);
-                alert('Error fetching referral link. Please try again later.');
-            }
-        });
-
-        const popup = document.getElementById('invitePopup');
-        const closeButton = document.querySelector('.close');
-        const copyButton = document.getElementById('copyButton');
-        const referralLinkInput = document.getElementById('referralLink');
-
-        closeButton.addEventListener('click', () => {
-            popup.style.display = 'none';
-        });
-
-        copyButton.addEventListener('click', () => {
-            referralLinkInput.select();
-            document.execCommand('copy');
-            alert('Copied to clipboard!');
-        });
-    });
-</script>
-
-</body>
+<!DOCTYPE html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Melody Mint</title> 
+    <link rel="stylesheet" href="styles.css"> 
+    <script src="https://telegram.org/js/telegram-web-app.js"></script> 
+    <script> 
+        document.addEventListener('DOMContentLoaded', () => { 
+            // Ensure Telegram SDK is available 
+            if (window.Telegram && window.Telegram.WebApp) { 
+                window.Telegram.WebApp.expand(); 
+            } 
+        }); 
+    </script> 
+</head> 
+<body> 
+    <div id="gameContainer"> 
+        <canvas id="gameCanvas" width="360" height="640"></canvas> 
+        <div id="header"> 
+            <div id="userInfo">Username</div> 
+            <div id="pointsContainer"> 
+                <img src="points.png" alt="Points" class="icon"> 
+                <span id="points">Loading...</span> 
+            </div> 
+        </div> 
+        <div id="startScreen"> 
+            <div id="newLayout"> 
+                <div id="ticketsContainer"> 
+                    <img src="tickets.png" alt="Tickets" class="icon"> 
+                    <span id="ticketsInfo">Loading...</span> 
+                </div> 
+                <button id="playButton">Play</button> 
+                <button id="tasksButton" class="comingSoon">Tasks</button> 
+                <button id="upgradeButton" class="comingSoon">Upgrade</button> 
+                <button id="referralButton">Invite Friends</button> 
+            </div> 
+        </div> 
+    </div> 
+ 
+    <audio id="backgroundMusic" src="background-music.mp3" loop></audio> 
+    <div id="footer"> 
+        <button class="footer-button" onclick="window.location.href='index.html'"> 
+            <img src="home.png" alt="Home"> 
+        </button> 
+        <button class="footer-button" onclick="window.location.href='tasks.html'"> 
+            <img src="tasks.png" alt="Tasks"> 
+        </button> 
+        <button class="footer-button" onclick="window.location.href='airdrop.html'"> 
+            <img src="airdrop.png" alt="Airdrop"> 
+        </button> 
+    </div> 
+ 
+    <script src="game.js"></script> 
+</body> 
 </html>
