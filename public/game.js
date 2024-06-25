@@ -7,24 +7,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
     preloadImages();
-    async function showReferralLink() {
-    try {
-        const response = await fetch('/getReferralLink'); // Endpoint to fetch referral link
-        const data = await response.json();
-
-        if (data.success) {
-            const referralLink = data.referralLink;
-            document.getElementById('referralLink').value = referralLink;
-            document.getElementById('invitePopup').style.display = 'flex';
-        } else {
-            console.error('Failed to fetch referral link:', data.error);
-            alert('Failed to fetch referral link. Please try again later.');
-        }
-    } catch (error) {
-        console.error('Error fetching referral link:', error);
-        alert('Error fetching referral link. Please try again later.');
-    }
-}
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -41,16 +23,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const userPoints = document.getElementById('points');
     const userTickets = document.getElementById('ticketsInfo');
     const header = document.getElementById('header');
-    function closePopup() {
-    document.getElementById('invitePopup').style.display = 'none';
-}
-
-function copyReferralLink() {
-    const referralLinkInput = document.getElementById('referralLink');
-    referralLinkInput.select();
-    document.execCommand('copy');
-    alert('Copied to clipboard!');
-}
 
     // Initialize Telegram Web Apps API
     const tg = window.Telegram.WebApp;
