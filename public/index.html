@@ -24,13 +24,17 @@
 
         // Function to show referral link and handle copy to clipboard
       // Function to show referral link and handle copy to clipboard
+// Function to show referral link and handle copy to clipboard
 async function showReferralLink() {
     try {
         const response = await fetch(`/getReferralLink?username=${encodeURIComponent(userInfo.textContent)}`);
         const data = await response.json();
 
         if (data.success) {
-            const referralLink = data.referralLink;
+            let referralLink = data.referralLink;
+
+            // Prepend "https://t.me/melodymint_bot/" to the referral link
+            referralLink = `https://t.me/melodymint_bot/${referralLink}`;
 
             // Display modal with referral link
             const modal = document.getElementById('myModal');
@@ -52,6 +56,7 @@ async function showReferralLink() {
         console.error('Error fetching referral link:', error);
     }
 }
+
 
 
         // Function to close the modal
