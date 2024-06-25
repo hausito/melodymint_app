@@ -14,55 +14,7 @@
             }
         });
     </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Ensure Telegram SDK is available
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.expand();
-            }
-        });
-
-        // Function to show referral link and handle copy to clipboard
-      // Function to show referral link and handle copy to clipboard
-async function showReferralLink() {
-    try {
-        // Fetch referral link from server
-        const response = await fetch('/getReferralLink'); // Assuming you have an endpoint to fetch the referral link
-        const data = await response.json();
-
-        if (data.success) {
-            const referralLink = data.referralLink;
-
-            // Display modal with referral link
-            const modal = document.getElementById('myModal');
-            const modalContent = document.getElementById('modalContent');
-            modal.style.display = 'block';
-            modalContent.textContent = referralLink;
-
-            // Automatically copy to clipboard (simulated for mobile)
-            const dummyInput = document.createElement('input');
-            document.body.appendChild(dummyInput);
-            dummyInput.value = referralLink;
-            dummyInput.select();
-            document.execCommand('copy');
-            document.body.removeChild(dummyInput);
-        } else {
-            console.error('Failed to fetch referral link:', data.error);
-            alert('Failed to fetch referral link. Please try again later.');
-        }
-    } catch (error) {
-        console.error('Error fetching referral link:', error);
-        alert('Error fetching referral link. Please try again later.');
-    }
-}
-
-
-        // Function to close the modal
-        function closeModal() {
-            const modal = document.getElementById('myModal');
-            modal.style.display = 'none';
-        }
-    </script>
+   
 </head>
 <body>
     <div id="gameContainer">
