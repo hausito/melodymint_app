@@ -189,188 +189,135 @@ document.addEventListener('DOMContentLoaded', async () => {
             tiles.push(new Tile(x, y));
         }
         score = 0;
-        TILE_SPEED = 4;
+        TILE_SPEED = 1.5;
         gameRunning = true;
-
-        backgroundMusic.play().catch(function(error) {
-            console.error('Error playing audio:', error);
-        });
     }
 
-    function isMobileDevice() {
-        return /Mobi|Android/i.test(navigator.userAgent);
+    function drawBackground() {
+        const gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+        gradient.addColorStop(0, SKY_BLUE);
+        gradient.addColorStop(1, '#FF6F61');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
 
-    function addNewTile() {
-        const attempts = 100;
-        const lastColumn = tiles.length > 0 ? Math.floor(tiles[tiles.length - 1].x / (TILE_WIDTH + SEPARATOR)) : -1;
-
-        for (let i = 0; i < attempts; i++) {
-            let newColumn;
-            do {
-                newColumn = Math.floor(Math.random() * COLUMNS);
-            } while (newColumn === lastColumn);
-
-            const newTileX = newColumn * (TILE_WIDTH + SEPARATOR);
-            const newTileY = Math.min(...tiles.map(tile => tile.y)) - TILE_HEIGHT - VERTICAL_GAP;
-
-            if (!tiles.some(tile => {
-                const rect = { x: newTileX, y: newTileY, width: TILE_WIDTH, height: TILE_HEIGHT };
-                return tile.y < rect.y + rect.height && tile.y + tile.height > rect.y &&
-                    tile.x < rect.x + rect.width && tile.x + tile.width > rect.x;
-            })) {
-                tiles.push(new Tile(newTileX, newTileY));
-                break;
-            }
-        }
-    }
-
-    function handleClick(event) {
-        if (!gameRunning) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const mouseX = (event.clientX - rect.left) * scaleX;
-        const mouseY = (event.clientY - rect.top) * scaleY;
-
-        let clickedOnTile = false;
-        tiles.forEach(tile => {
-            if (tile.isClicked(mouseX, mouseY) && !tile.clicked) {
-                tile.startDisappearing();
-                clickedOnTile = true;
-                score++;
-                addNewTile();
-            }
-        });
-
-        if (!clickedOnTile) {
-            gameRunning = false;
-            gameOver();
-        }
-    }
-
-    canvas.addEventListener('click', handleClick);
-    canvas.addEventListener('touchstart', (event) => {
-        event.preventDefault();
-        const touch = event.touches[0];
-        handleClick({
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-        });
-    });
-
-    let lastTimestamp = 0;
-
-    function gameLoop(timestamp) {
-        if (!gameRunning) return;
-
-        const deltaTime = (timestamp - lastTimestamp) / 1000;
-        lastTimestamp = timestamp;
-
-        ctx.clearRect(0, 0, WIDTH, HEIGHT);
-
-        let outOfBounds = false;
-        tiles.forEach(tile => {
-            tile.move(TILE_SPEED * deltaTime * 60);
-            tile.updateOpacity();
-            if (tile.isOutOfBounds()) {
-                outOfBounds = true;
-            }
-            tile.draw();
-        });
-
-        if (outOfBounds) {
-            gameRunning = false;
-            gameOver();
-            return;
-        }
-
-        tiles = tiles.filter(tile => tile.y < HEIGHT && tile.opacity > 0);
-
-        while (tiles.length < 4) {
-            addNewTile();
-        }
-
-        // Draw vertical lines
+    function drawSeparator() {
         ctx.strokeStyle = BORDER_COLOR;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = SEPARATOR;
         for (let i = 1; i < COLUMNS; i++) {
-            const x = i * TILE_WIDTH;
+            const x = i * TILE_WIDTH + (i - 1) * SEPARATOR + SEPARATOR / 2;
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, HEIGHT);
             ctx.stroke();
         }
+    }
 
+    function drawScore() {
         ctx.fillStyle = SHADOW_COLOR;
-        ctx.font = 'bold 24px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(`SCORE: ${score}`, WIDTH / 2 + 2, 32);
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(`Score: ${score}`, WIDTH - 10, 30);
+    }
 
-        ctx.fillStyle = SKY_BLUE;
-        ctx.fillText(`SCORE: ${score}`, WIDTH / 2, 30);
+    let lastTimestamp;
+    function gameLoop(timestamp) {
+        const delta = timestamp - lastTimestamp;
+        lastTimestamp = timestamp;
 
-        TILE_SPEED += SPEED_INCREMENT * deltaTime * 60;
+        drawBackground();
+        drawSeparator();
 
+        if (gameRunning) {
+            tiles.forEach(tile => {
+                tile.move(TILE_SPEED);
+                tile.draw();
+                tile.updateOpacity();
+
+                if (tile.isOutOfBounds()) {
+                    gameRunning = false;
+                }
+            });
+
+            TILE_SPEED += SPEED_INCREMENT;
+            if (tiles.length > 0 && tiles[tiles.length - 1].y > 0) {
+                const x = Math.floor(Math.random() * COLUMNS) * (TILE_WIDTH + SEPARATOR);
+                const y = -TILE_HEIGHT;
+                tiles.push(new Tile(x, y));
+            }
+
+            if (!gameRunning) {
+                alert(`Game over! Your score is ${score}`);
+                saveGameResult(score);
+                startScreen.style.display = 'block';
+                footer.style.display = 'flex';
+                header.style.display = 'flex';
+                backgroundMusic.pause();
+            }
+        }
+
+        drawScore();
         requestAnimationFrame(gameLoop);
     }
 
-    function startMusic() {
-        backgroundMusic.play().catch(function(error) {
-            console.error('Error playing audio:', error);
-        });
-    }
+    canvas.addEventListener('click', (event) => {
+        const mouseX = event.offsetX;
+        const mouseY = event.offsetY;
 
-    tg.onEvent('themeChanged', function() {
-        const themeParams = tg.themeParams;
-        if (themeParams && themeParams.bg_color && !themeParams.bg_color.includes('unset') && !themeParams.bg_color.includes('none')) {
-            document.body.style.backgroundColor = themeParams.bg_color;
-        }
-    });
-
-    tg.ready().then(function() {
-        if (tg.themeParams) {
-            const themeParams = tg.themeParams;
-            if (themeParams.bg_color && !themeParams.bg_color.includes('unset') && !themeParams.bg_color.includes('none')) {
-                document.body.style.backgroundColor = themeParams.bg_color;
+        for (const tile of tiles) {
+            if (tile.isClicked(mouseX, mouseY) && !tile.clicked) {
+                tile.startDisappearing();
+                score++;
+                break;
             }
         }
-        if (tg.initDataUnsafe?.user) {
-            userInfo.textContent = tg.initDataUnsafe.user.username || `${tg.initDataUnsafe.user.first_name} ${tg.initDataUnsafe.user.last_name}`;
-        } else {
-            userInfo.textContent = 'Username';
-        }
-        if (tg.initDataUnsafe?.is_explicitly_enabled) {
-            startMusic();
-        }
     });
 
-    async function gameOver() {
-        await saveUser(userInfo.textContent, score);
-        const redirectURL = `transition.html?score=${score}`;
-        window.location.replace(redirectURL);
-    }
+    const startMusic = () => {
+        backgroundMusic.currentTime = 0;
+        backgroundMusic.play();
+    };
 
-    async function saveUser(username, scoreToAdd) {
+    const saveGameResult = async (score) => {
         try {
-            const response = await fetch('/saveUser', {
+            const response = await fetch('/saveGameResult', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ username, points: scoreToAdd }),
+                body: JSON.stringify({ username: userInfo.textContent, score }),
             });
 
             const result = await response.json();
-            if (result.success) {
-                points = result.data.points;
-                userPoints.textContent = `Points: ${points}`;
+            if (!result.success) {
+                console.error('Error saving game result:', result.error);
             } else {
-                console.error('Error saving user:', result.error);
+                points += score; // Assuming score is added to points
+                userPoints.textContent = `Points: ${points}`;
             }
         } catch (error) {
-            console.error('Error saving user:', error);
+            console.error('Error saving game result:', error);
+        }
+    };
+
+    // Modal functionality
+    function showReferralLink() {
+        const modal = document.getElementById('myModal');
+        const modalContent = document.getElementById('modalContent');
+        modalContent.textContent = referralLink;  // Use the referral link fetched from the server
+        modal.style.display = 'block';
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('myModal');
+        modal.style.display = 'none';
+    }
+
+    // Close the modal when clicking outside of it
+    window.onclick = function(event) {
+        const modal = document.getElementById('myModal');
+        if (event.target == modal) {
+            modal.style.display = 'none';
         }
     }
 });
