@@ -59,11 +59,18 @@ app.get('/getUserData', async (req, res) => {
             res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
         } else {
             // User does not exist, insert new user with default values
-            const insertQuery = 'INSERT INTO users (username, points, tickets) VALUES ($1, $2, $3) RETURNING points, tickets';
-            const insertValues = [username, 0, 100];
-            const insertResult = await client.query(insertQuery, insertValues);
+            const insertQuery = 'INSERT INTO users (username, points, referral_link) VALUES ($1, $2, $3) RETURNING *';
+            const referralLink = `ref${result.rows[0].user_id}`; // Generate referral link (example: ref197)
+            const insertValues = [username, points, referralLink];
+            const result = await client.query(insertQuery, insertValues);
 
-            res.status(200).json({ success: true, points: insertResult.rows[0].points, tickets: insertResult.rows[0].tickets });
+
+            res.status(200).json({ success: true, data: {
+                username: result.rows[0].username,
+                points: result.rows[0].points,
+                referral_link: result.rows[0].referral_link
+            }});
+
         }
 
         client.release();
