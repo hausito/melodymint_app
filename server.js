@@ -126,12 +126,15 @@ app.post('/saveUser', async (req, res) => {
             const result = await client.query(insertQuery, insertValues);
             client.release();
             res.status(200).json({ success: true, data: result.rows[0] });
+
+            // Notify user via Telegram or perform any other actions
         }
     } catch (err) {
         console.error('Error saving user:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
 
 // Endpoint to update tickets
 app.post('/updateTickets', async (req, res) => {
