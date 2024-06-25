@@ -17,14 +17,14 @@
         // Function to show referral link and handle copy to clipboard
         async function showReferralLink() {
             try {
-                const response = await fetch(/getReferralLink?username=${encodeURIComponent(userInfo.textContent)});
+                const response = await fetch(`/getReferralLink?username=${encodeURIComponent(userInfo.textContent)}`);
                 const data = await response.json();
 
                 if (data.success) {
                     let referralLink = data.referralLink;
 
                     // Prepend "https://t.me/melodymint_bot/" to the referral link
-                    referralLink = https://t.me/melodymint_bot/${referralLink};
+                    referralLink = `https://t.me/melodymint_bot/${referralLink}`;
 
                     // Display modal with referral link
                     const modal = document.getElementById('myModal');
@@ -32,13 +32,20 @@
                     modal.style.display = 'block';
                     modalContent.textContent = referralLink;
 
-                    // Automatically copy to clipboard (simulated for mobile)
-                    const dummyInput = document.createElement('input');
-                    document.body.appendChild(dummyInput);
-                    dummyInput.value = referralLink;
-                    dummyInput.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(dummyInput);
+                    // Create copy button
+                    const copyButton = document.createElement('button');
+                    copyButton.textContent = 'Copy';
+                    copyButton.onclick = () => {
+                        // Create a temporary input element to copy the referral link
+                        const dummyInput = document.createElement('input');
+                        document.body.appendChild(dummyInput);
+                        dummyInput.value = referralLink;
+                        dummyInput.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(dummyInput);
+                        alert('Referral link copied to clipboard!');
+                    };
+                    modalContent.appendChild(copyButton);
                 } else {
                     console.error('Failed to fetch referral link:', data.error);
                 }
@@ -51,18 +58,6 @@
         function closeModal() {
             const modal = document.getElementById('myModal');
             modal.style.display = 'none';
-        }
-
-        // Function to copy referral link to clipboard
-        function copyReferralLink() {
-            const modalContent = document.getElementById('modalContent');
-            const dummyInput = document.createElement('input');
-            document.body.appendChild(dummyInput);
-            dummyInput.value = modalContent.textContent;
-            dummyInput.select();
-            document.execCommand('copy');
-            document.body.removeChild(dummyInput);
-            alert('Referral link copied to clipboard');
         }
     </script>
 </head>
@@ -93,11 +88,12 @@
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <p id="modalContent"></p>
-            <button onclick="copyReferralLink()">Copy Referral Link</button>
             <button onclick="closeModal()">Close</button>
         </div>
     </div>
 
+    <!-- Button to invite friends -->
+    
     <audio id="backgroundMusic" src="background-music.mp3" loop></audio>
     <div id="footer">
         <button class="footer-button" onclick="window.location.href='index.html'">
