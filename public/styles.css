@@ -20,6 +20,67 @@ body {
     border: none;
     background-color: transparent;
 }
+/* Modal styling */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 400px;
+    text-align: center;
+    position: relative;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #888;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Button styling */
+.invite-button {
+    font-family: 'Roboto', sans-serif;
+    padding: 15px 30px;
+    margin: 10px 0;
+    background: linear-gradient(45deg, #ff7e5f, #feb47b);
+    color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    width: calc(100% - 40px);
+    max-width: 300px;
+}
+
+.invite-button:hover {
+    background: linear-gradient(45deg, #feb47b, #ff7e5f);
+}
 
 canvas {
     display: block;
