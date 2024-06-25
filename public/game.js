@@ -334,12 +334,11 @@ function addNewTile() {
         }
     });
 
-
-            const referralButton = document.getElementById('referralButton');
-            referralButton.addEventListener('click', () => {
-                window.location.href = 'friends.html';
-            });
-
+    async function gameOver() {
+        await saveUser(userInfo.textContent, score);
+        const redirectURL = `transition.html?score=${score}`;
+        window.location.replace(redirectURL);
+    }
 
     async function saveUser(username, scoreToAdd) {
         try {
