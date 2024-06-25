@@ -176,12 +176,14 @@ app.post('/updateTickets', async (req, res) => {
 });
 
 // Telegram Bot Functionality
+// Endpoint to fetch referral link
 app.get('/getReferralLink', async (req, res) => {
     try {
-        // Fetch referral link from the database
+        const userId = req.query.userId; // Assuming userId is passed in the query string
+
         const client = await pool.connect();
-        const result = await client.query('SELECT referral_link FROM users WHERE user_id = $1', [userId]); // Replace with actual query
-        
+        const result = await client.query('SELECT referral_link FROM users WHERE user_id = $1', [userId]);
+
         if (result.rows.length > 0) {
             const referralLink = result.rows[0].referral_link;
             res.status(200).json({ success: true, referralLink });
@@ -195,6 +197,7 @@ app.get('/getReferralLink', async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
 // Handle /start command
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
