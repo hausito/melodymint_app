@@ -13,44 +13,54 @@
                 window.Telegram.WebApp.expand();
             }
         });
+
+        // Function to show referral link and handle copy to clipboard
+        function showReferralLink() {
+            // Fetch referral link from database (simulated here)
+            const referralLink = 'https://example.com/referral';
+
+            // Display modal with referral link
+            const modal = document.getElementById('myModal');
+            const modalContent = document.getElementById('modalContent');
+            modal.style.display = 'block';
+            modalContent.textContent = referralLink;
+
+            // Automatically copy to clipboard (simulated for mobile)
+            const dummyInput = document.createElement('input');
+            document.body.appendChild(dummyInput);
+            dummyInput.value = referralLink;
+            dummyInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummyInput);
+        }
+
+        // Function to close the modal
+        function closeModal() {
+            const modal = document.getElementById('myModal');
+            modal.style.display = 'none';
+        }
     </script>
 </head>
 <body>
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="360" height="640"></canvas>
-        <div id="header">
-            <div id="userInfo">Username</div>
-            <div id="pointsContainer">
-                <img src="points.png" alt="Points" class="icon">
-                <span id="points">Loading...</span>
+        <!-- Your game content -->
+    </div>
 
-
-            </div>
-        </div>
-        <div id="startScreen">
-            <div id="newLayout">
-                <div id="ticketsContainer">
-                    <img src="tickets.png" alt="Tickets" class="icon">
-                    <span id="ticketsInfo">Loading...</span>
-                </div>
-                <button id="playButton">Play</button>
-                <button id="tasksButton" class="comingSoon">Tasks</button>
-                <button id="upgradeButton" class="comingSoon">Upgrade</button>
-            </div>
+    <!-- Modal for displaying referral link -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <p id="modalContent"></p>
+            <button onclick="closeModal()">Close</button>
         </div>
     </div>
 
-    <audio id="backgroundMusic" src="background-music.mp3" loop></audio>
+    <!-- Button to invite friends -->
+    <button id="inviteButton" class="invite-button" onclick="showReferralLink()">Invite Friends</button>
+
+    <!-- Footer and other content -->
     <div id="footer">
-        <button class="footer-button" onclick="window.location.href='index.html'">
-            <img src="home.png" alt="Home">
-        </button>
-        <button class="footer-button" onclick="window.location.href='tasks.html'">
-            <img src="tasks.png" alt="Tasks">
-        </button>
-        <button class="footer-button" onclick="window.location.href='airdrop.html'">
-            <img src="airdrop.png" alt="Airdrop">
-        </button>
+        <!-- Your footer buttons -->
     </div>
 
     <script src="game.js"></script>
