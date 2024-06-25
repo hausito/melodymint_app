@@ -14,6 +14,40 @@
             }
         });
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Ensure Telegram SDK is available
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.expand();
+            }
+        });
+
+        // Function to show referral link and handle copy to clipboard
+        function showReferralLink() {
+            // Fetch referral link from database (simulated here)
+            const referralLink = 'https://example.com/referral';
+
+            // Display modal with referral link
+            const modal = document.getElementById('myModal');
+            const modalContent = document.getElementById('modalContent');
+            modal.style.display = 'block';
+            modalContent.textContent = referralLink;
+
+            // Automatically copy to clipboard (simulated for mobile)
+            const dummyInput = document.createElement('input');
+            document.body.appendChild(dummyInput);
+            dummyInput.value = referralLink;
+            dummyInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummyInput);
+        }
+
+        // Function to close the modal
+        function closeModal() {
+            const modal = document.getElementById('myModal');
+            modal.style.display = 'none';
+        }
+    </script>
 </head>
 <body>
     <div id="gameContainer">
@@ -23,6 +57,8 @@
             <div id="pointsContainer">
                 <img src="points.png" alt="Points" class="icon">
                 <span id="points">Loading...</span>
+
+
             </div>
         </div>
         <div id="startScreen">
@@ -38,7 +74,7 @@
             </div>
         </div>
     </div>
-    <div id="myModal" class="modal">
+     <div id="myModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <p id="modalContent"></p>
