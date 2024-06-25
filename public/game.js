@@ -41,6 +41,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const userPoints = document.getElementById('points');
     const userTickets = document.getElementById('ticketsInfo');
     const header = document.getElementById('header');
+    function closePopup() {
+    document.getElementById('invitePopup').style.display = 'none';
+}
+
+function copyReferralLink() {
+    const referralLinkInput = document.getElementById('referralLink');
+    referralLinkInput.select();
+    document.execCommand('copy');
+    alert('Copied to clipboard!');
+}
 
     // Initialize Telegram Web Apps API
     const tg = window.Telegram.WebApp;
