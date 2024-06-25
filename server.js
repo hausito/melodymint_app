@@ -85,25 +85,6 @@ app.get('/getUserData', async (req, res) => {
 });
 
 
-// Endpoint to fetch referral link
-app.get('/getReferralLink', async (req, res) => {
-    try {
-        // Fetch referral link from database (replace with your actual query logic)
-        const client = await pool.connect();
-        const result = await client.query('SELECT referral_link FROM users WHERE user_id = $1', [userId]); // Replace with actual query to fetch referral link
-        client.release();
-
-        if (result.rows.length > 0) {
-            const referralLink = result.rows[0].referral_link;
-            res.status(200).json({ success: true, referralLink });
-        } else {
-            res.status(404).json({ success: false, error: 'Referral link not found' });
-        }
-    } catch (error) {
-        console.error('Error fetching referral link:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
 
 
 app.get('/topUsers', async (req, res) => {
