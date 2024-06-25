@@ -58,13 +58,16 @@ app.get('/getUserData', async (req, res) => {
             // User exists
             res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
         } else {
-            // User does not exist, insert new user with default values and generate referral link
+            // User does not exist, insert new user with default values
             const insertQuery = 'INSERT INTO users (username, points, tickets) VALUES ($1, $2, $3) RETURNING user_id, points, tickets';
             const insertValues = [username, 0, 100];
             const insertResult = await client.query(insertQuery, insertValues);
 
-            // Generate referral link
-            const referralLink = `ref${insertResult.rows[0].user_id}`; // Example: ref1234
+            // Retrieve the inserted user's user_id
+            const user_id = insertResult.rows[0].user_id;
+
+            // Generate referral link based on user_id
+            const referralLink = `ref${user_id}`; // Example: ref304 (assuming user_id is 304)
 
             // Update response to include referral link
             res.status(200).json({ success: true, points: insertResult.rows[0].points, tickets: insertResult.rows[0].tickets, referral_link: referralLink });
@@ -76,6 +79,7 @@ app.get('/getUserData', async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
 
 
 app.get('/topUsers', async (req, res) => {
