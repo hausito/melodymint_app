@@ -46,7 +46,7 @@ app.use(express.json());
 // Endpoint to fetch initial user data (points and tickets)
 app.get('/getUserData', async (req, res) => {
     try {
-        const { username, ref } = req.query;
+        const { username, referralLink } = req.query;
 
         if (!username) {
             return res.status(400).json({ success: false, error: 'Username is required' });
@@ -70,14 +70,14 @@ app.get('/getUserData', async (req, res) => {
 
             // Generate referral link using the new user's ID
             const userId = insertResult.rows[0].user_id;
-            const referralLink = `ref${userId}`;
+            const userReferralLink = `ref${userId}`;
 
             // Update the user record with the correct referral link
-            await client.query('UPDATE users SET referral_link = $1 WHERE user_id = $2', [referralLink, userId]);
+            await client.query('UPDATE users SET referral_link = $1 WHERE user_id = $2', [userReferralLink, userId]);
 
             // If there is a referrer, update their friends_invited count
-            if (ref) {
-                const referrerId = parseInt(ref.replace('ref', ''), 10);
+            if (referralLink) {
+                const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot/ref', ''), 10);
                 await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
             }
 
