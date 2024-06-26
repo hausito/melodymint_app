@@ -42,7 +42,6 @@ pool.connect((err, client, done) => {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-
 // Endpoint to fetch initial user data (points and tickets)
 app.get('/getUserData', async (req, res) => {
     try {
@@ -77,8 +76,21 @@ app.get('/getUserData', async (req, res) => {
 
             // If there is a referrer, update their friends_invited count
             if (referralLink) {
+                // Extract referrer ID from referral link
                 const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot/ref', ''), 10);
-                await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
+
+                // Debugging logs
+                console.log(`Referrer ID: ${referrerId}`);
+
+                // Check if referrer exists and increment their friends_invited
+                const referrerCheck = await client.query('SELECT user_id FROM users WHERE user_id = $1', [referrerId]);
+
+                if (referrerCheck.rows.length > 0) {
+                    await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
+                    console.log(`Incremented friends_invited for referrer ID: ${referrerId}`);
+                } else {
+                    console.log(`Referrer ID ${referrerId} not found`);
+                }
             }
 
             res.status(200).json({ success: true, points: insertResult.rows[0].points, tickets: insertResult.rows[0].tickets });
@@ -90,7 +102,6 @@ app.get('/getUserData', async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
-
 
 // Endpoint to fetch referral link
 app.get('/getReferralLink', async (req, res) => {
@@ -118,13 +129,9 @@ app.get('/getReferralLink', async (req, res) => {
     }
 });
 
-
 app.get('/topUsers', async (req, res) => {
     try {
-        // Assuming you have a function to fetch top users from the database
         const topUsers = await fetchTopUsersFromDatabase(); // Implement this function
-        
-        // Respond with the top users data in JSON format
         res.status(200).json(topUsers);
     } catch (error) {
         console.error('Error fetching top users:', error);
@@ -136,7 +143,7 @@ async function fetchTopUsersFromDatabase() {
     const client = await pool.connect();
     try {
         const result = await client.query('SELECT username, points FROM users ORDER BY points DESC LIMIT 10');
-        return result.rows; // Assuming rows contain username and points
+        return result.rows;
     } finally {
         client.release();
     }
