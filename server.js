@@ -42,6 +42,49 @@ pool.connect((err, client, done) => {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+// Function to handle inserting a new user and updating referrer
+const insertUserAndReferral = async (username, referralLink) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const insertQuery = `
+            INSERT INTO users (username, points, tickets, referral_link, friends_invited)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING user_id, points, tickets
+        `;
+        const insertValues = [username, 0, 100, '', 0];
+        const insertResult = await client.query(insertQuery, insertValues);
+
+        const userId = insertResult.rows[0].user_id;
+        const userReferralLink = `ref${userId}`;
+
+        await client.query('UPDATE users SET referral_link = $1 WHERE user_id = $2', [userReferralLink, userId]);
+
+        if (referralLink) {
+            const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot/ref', ''), 10);
+            if (!isNaN(referrerId)) {
+                const referrerCheck = await client.query('SELECT user_id FROM users WHERE user_id = $1', [referrerId]);
+                if (referrerCheck.rows.length > 0) {
+                    await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
+                    console.log(`Incremented friends_invited for referrer ID: ${referrerId}`);
+                } else {
+                    console.log(`Referrer ID ${referrerId} not found`);
+                }
+            }
+        }
+
+        await client.query('COMMIT');
+        return insertResult.rows[0];
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error in insertUserAndReferral:', error);
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 // Endpoint to fetch initial user data (points and tickets)
 app.get('/getUserData', async (req, res) => {
     try {
@@ -55,45 +98,10 @@ app.get('/getUserData', async (req, res) => {
         const result = await client.query('SELECT user_id, points, tickets FROM users WHERE username = $1', [username]);
 
         if (result.rows.length > 0) {
-            // User exists
             res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
         } else {
-            // User does not exist, insert new user with default values
-            const insertQuery = `
-                INSERT INTO users (username, points, tickets, referral_link, friends_invited)
-                VALUES ($1, $2, $3, $4, $5)
-                RETURNING user_id, points, tickets
-            `;
-            const insertValues = [username, 0, 100, '', 0];
-            const insertResult = await client.query(insertQuery, insertValues);
-
-            // Generate referral link using the new user's ID
-            const userId = insertResult.rows[0].user_id;
-            const userReferralLink = `ref${userId}`;
-
-            // Update the user record with the correct referral link
-            await client.query('UPDATE users SET referral_link = $1 WHERE user_id = $2', [userReferralLink, userId]);
-
-            // If there is a referrer, update their friends_invited count
-            if (referralLink) {
-                // Extract referrer ID from referral link
-                const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot/ref', ''), 10);
-
-                // Debugging logs
-                console.log(`Referrer ID: ${referrerId}`);
-
-                // Check if referrer exists and increment their friends_invited
-                const referrerCheck = await client.query('SELECT user_id FROM users WHERE user_id = $1', [referrerId]);
-
-                if (referrerCheck.rows.length > 0) {
-                    await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
-                    console.log(`Incremented friends_invited for referrer ID: ${referrerId}`);
-                } else {
-                    console.log(`Referrer ID ${referrerId} not found`);
-                }
-            }
-
-            res.status(200).json({ success: true, points: insertResult.rows[0].points, tickets: insertResult.rows[0].tickets });
+            const newUser = await insertUserAndReferral(username, referralLink);
+            res.status(200).json({ success: true, points: newUser.points, tickets: newUser.tickets });
         }
 
         client.release();
@@ -129,6 +137,7 @@ app.get('/getReferralLink', async (req, res) => {
     }
 });
 
+// Endpoint to fetch top users
 app.get('/topUsers', async (req, res) => {
     try {
         const topUsers = await fetchTopUsersFromDatabase(); // Implement this function
@@ -213,6 +222,12 @@ app.post('/updateTickets', async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
+// Telegram Bot Functionality
+
+
+
+
 
 // Telegram Bot Functionality
 
