@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Replace with your bot token
-const token = process.env.BOT_TOKEN || '6750160592:AAH-hbeHm6mmswN571d3UeSkoX5v1ntvceQ';
+const token = process.env.BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
 
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new TelegramBot(token, { polling: true });
@@ -43,19 +43,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 
-
-
 // Endpoint to fetch initial user data (points and tickets)
 app.get('/getUserData', async (req, res) => {
     try {
-        const { username } = req.query;
+        const { username, ref } = req.query;
 
         if (!username) {
             return res.status(400).json({ success: false, error: 'Username is required' });
         }
 
         const client = await pool.connect();
-        const result = await client.query('SELECT points, tickets FROM users WHERE username = $1', [username]);
+        const result = await client.query('SELECT user_id, points, tickets FROM users WHERE username = $1', [username]);
 
         if (result.rows.length > 0) {
             // User exists
@@ -76,6 +74,12 @@ app.get('/getUserData', async (req, res) => {
 
             // Update the user record with the correct referral link
             await client.query('UPDATE users SET referral_link = $1 WHERE user_id = $2', [referralLink, userId]);
+
+            // If there is a referrer, update their friends_invited count
+            if (ref) {
+                const referrerId = parseInt(ref.replace('ref', ''), 10);
+                await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
+            }
 
             res.status(200).json({ success: true, points: insertResult.rows[0].points, tickets: insertResult.rows[0].tickets });
         }
