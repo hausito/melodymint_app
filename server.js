@@ -64,6 +64,7 @@ const insertUserAndReferral = async (username, referralLink) => {
 
         if (referralLink) {
             const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot?start=', ''), 10);
+            console.log(`Parsed referrerId: ${referrerId}`); // Add this line
             if (!isNaN(referrerId)) {
                 const referrerCheck = await client.query('SELECT user_id FROM users WHERE user_id = $1', [referrerId]);
                 if (referrerCheck.rows.length > 0) {
