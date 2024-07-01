@@ -1,4 +1,4 @@
- const express = require('express');
+const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 const TelegramBot = require('node-telegram-bot-api');
@@ -50,17 +50,17 @@ const generateAuthCode = () => {
 };
 
 // Insert user and referral function
-const insertUserAndReferral = async (username, referralLink) => {
+const insertUserAndReferral = async (username, referralLink, chatId = null) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         const insertQuery = `
-            INSERT INTO users (username, points, tickets, referral_link, friends_invited)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO users (username, points, tickets, referral_link, friends_invited, telegram_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING user_id, points, tickets
         `;
-        const insertValues = [username, 0, 100, '', 0];
+        const insertValues = [username, 0, 100, referralLink, 0, chatId];
         const insertResult = await client.query(insertQuery, insertValues);
 
         const userId = insertResult.rows[0].user_id;
@@ -249,49 +249,6 @@ cron.schedule('0 0 * * *', async () => {
         console.error('Error resetting tickets:', err);
     }
 });
-
-bot.onText(/\/start (.+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const authCode = match[1];
-    console.log(`Received /start command with authCode: ${authCode} from chatId: ${chatId}`);
-
-    try {
-        const client = await pool.connect();
-        const result = await client.query('SELECT user_id, username, referral_link FROM users WHERE auth_code = $1', [authCode]);
-
-        if (result.rows.length > 0) {
-            const userId = result.rows[0].user_id;
-            const username = result.rows[0].username;
-            const referralLink = result.rows[0].referral_link;
-
-            // Update the user's Telegram ID
-            await client.query('UPDATE users SET telegram_id = $1 WHERE user_id = $2', [chatId, userId]);
-
-            if (referralLink) {
-                // Increment friends_invited for the referrer
-                await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE referral_link = $1', [referralLink]);
-                console.log(`Incremented friends_invited for referrer with referral link: ${referralLink}`);
-                
-                // Notify the referrer
-                const referrerResult = await client.query('SELECT telegram_id FROM users WHERE referral_link = $1', [referralLink]);
-                if (referrerResult.rows.length > 0) {
-                    bot.sendMessage(referrerResult.rows[0].telegram_id, `You have a new referral: ${username}.`);
-                }
-            }
-
-            bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
-        } else {
-            // If the user does not exist in the database, proceed with welcome message
-            bot.sendMessage(chatId, `Welcome! You've successfully joined via referral.`);
-        }
-
-        client.release();
-    } catch (error) {
-        console.error('Error processing /start command:', error);
-        bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
-    }
-});
-
 
 // Handle Telegram messages
 bot.on('message', (msg) => {
