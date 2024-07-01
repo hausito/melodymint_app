@@ -49,11 +49,19 @@ const generateAuthCode = () => {
     return crypto.randomBytes(8).toString('hex');
 };
 
+// Generate unique Telegram ID
+const generateTelegramId = () => {
+    return crypto.randomBytes(8).toString('hex');
+};
+
 // Insert user and referral function
-const insertUserAndReferral = async (username, referralLink, telegramId) => {
+const insertUserAndReferral = async (username, referralLink) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+
+        // Generate unique Telegram ID
+        const telegramId = generateTelegramId();
 
         const insertQuery = `
             INSERT INTO users (username, points, tickets, referral_link, friends_invited, telegram_id)
@@ -72,7 +80,7 @@ const insertUserAndReferral = async (username, referralLink, telegramId) => {
         console.log(`New user created with ID: ${userId}, referral link: ${userReferralLink}, auth code: ${authCode}`);
 
         await client.query('COMMIT');
-        return { ...insertResult.rows[0], authCode };
+        return { ...insertResult.rows[0], authCode, telegramId };
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error in insertUserAndReferral:', error);
@@ -94,7 +102,7 @@ bot.on('message', async (msg) => {
         if (existingUser.rows.length === 0) {
             // User does not exist, insert new user
             const referralLink = ''; // No referral link on initial bot start
-            await insertUserAndReferral(username, referralLink, chatId);
+            await insertUserAndReferral(username, referralLink);
             console.log(`New user saved: ${username} (Telegram ID: ${chatId})`);
         } else {
             // User exists, update their Telegram ID if not already set
