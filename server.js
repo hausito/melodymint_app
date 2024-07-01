@@ -257,11 +257,12 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
 
     try {
         const client = await pool.connect();
-        const result = await client.query('SELECT user_id, username, telegram_id FROM users WHERE auth_code = $1', [authCode]);
+        const result = await client.query('SELECT user_id, username, telegram_id, referral_link FROM users WHERE auth_code = $1', [authCode]);
 
         if (result.rows.length > 0) {
             const userId = result.rows[0].user_id;
             const username = result.rows[0].username;
+            const referralLink = result.rows[0].referral_link;
 
             // Invalidate the auth code
             await client.query('UPDATE users SET auth_code = NULL WHERE user_id = $1', [userId]);
@@ -271,8 +272,25 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
             bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
 
             // Increment friends_invited for the referrer
-            const referralLink = result.rows[0].referral_link;
-            await insertUserAndReferral(username, referralLink);
+            if (referralLink) {
+                const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot?start=', ''), 10);
+                console.log(`Parsed referrerId: ${referrerId}`);
+                if (!isNaN(referrerId)) {
+                    const referrerCheck = await client.query('SELECT user_id, telegram_id FROM users WHERE user_id = $1', [referrerId]);
+                    if (referrerCheck.rows.length > 0) {
+                        await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
+                        console.log(`Incremented friends_invited for referrer ID: ${referrerId}`);
+
+                        // Notify the referrer
+                        bot.sendMessage(referrerCheck.rows[0].telegram_id, `You have a new referral: ${username}.`);
+                    } else {
+                        console.log(`Referrer ID ${referrerId} not found`);
+                    }
+                } else {
+                    console.log(`Invalid referrerId: ${referrerId}`);
+                }
+            }
+
         } else {
             // If the user does not exist in the database, proceed with welcome message
             bot.sendMessage(chatId, `Welcome! You've successfully joined via referral.`);
@@ -284,6 +302,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
 });
+
 
 
 // Handle Telegram messages
