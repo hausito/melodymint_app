@@ -263,6 +263,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         if (result.rows.length > 0) {
             const userId = result.rows[0].user_id;
             const username = result.rows[0].username;
+
             // Invalidate the auth code
             await client.query('UPDATE users SET auth_code = NULL WHERE user_id = $1', [userId]);
             // Update the user's Telegram ID
@@ -270,7 +271,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
 
             bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
         } else {
-            bot.sendMessage(chatId, 'Invalid referral link.');
+            bot.sendMessage(chatId, 'Invalid referral link. Please contact support for assistance.');
         }
 
         client.release();
@@ -279,6 +280,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
 });
+
 
 // Handle Telegram messages
 bot.on('message', (msg) => {
