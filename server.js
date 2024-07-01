@@ -253,17 +253,19 @@ cron.schedule('0 0 * * *', async () => {
 bot.onText(/\/start (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const authCode = match[1];
+    const username = msg.from.username; // Get the Telegram username of the current user
+
     console.log(`Received /start command with authCode: ${authCode} from chatId: ${chatId}`);
 
     try {
         const client = await pool.connect();
-        const result = await client.query('SELECT user_id, username, referral_link, telegram_id FROM users WHERE auth_code = $1', [authCode]);
+        const result = await client.query('SELECT user_id, referral_link, telegram_id FROM users WHERE auth_code = $1', [authCode]);
 
         if (result.rows.length > 0) {
-            const userId = result.rows[0].user_id;
-            const username = result.rows[0].username;
-            const referralLink = result.rows[0].referral_link;
-            const referrerTelegramId = result.rows[0].telegram_id;
+            const newUser = result.rows[0];
+            const userId = newUser.user_id;
+            const referralLink = newUser.referral_link;
+            const referrerTelegramId = newUser.telegram_id;
 
             // Update the user's Telegram ID
             await client.query('UPDATE users SET telegram_id = $1 WHERE user_id = $2', [chatId, userId]);
@@ -275,15 +277,15 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
 
                 // Notify the referrer if their Telegram ID is available
                 if (referrerTelegramId) {
-                    bot.sendMessage(referrerTelegramId, `You have a new referral: ${username}.`);
+                    bot.sendMessage(referrerTelegramId, `Your referral ${username} has joined.`);
                 }
             }
 
             // Send a personalized welcome message to the new user
             bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
 
-            // If there's a referrer, inform the new user about their referrer's Telegram ID
-            if (referralLink && referrerTelegramId) {
+            // If there's a referrer, inform the new user about their referrer
+            if (referralLink && referrerTelegramId !== chatId) {
                 bot.sendMessage(chatId, `You were referred by someone with Telegram ID: ${referrerTelegramId}`);
             }
 
