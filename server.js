@@ -43,18 +43,17 @@ const generateAuthCode = () => {
 };
 
 // Insert user and referral function
-// Function to insert user and handle referral
-const insertUserAndReferral = async (username, referralLink, telegramId) => {
+const insertUserAndReferral = async (username, referralLink) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         const insertQuery = `
-            INSERT INTO users (username, points, tickets, referral_link, friends_invited, telegram_id)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO users (username, points, tickets, referral_link, friends_invited)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING user_id, points, tickets
         `;
-        const insertValues = [username, 0, 100, '', 0, telegramId];
+        const insertValues = [username, 0, 100, '', 0];
         const insertResult = await client.query(insertQuery, insertValues);
 
         const userId = insertResult.rows[0].user_id;
@@ -65,7 +64,7 @@ const insertUserAndReferral = async (username, referralLink, telegramId) => {
 
         if (referralLink) {
             const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot?start=', ''), 10);
-            console.log(`Parsed referrerId: ${referrerId}`);
+            console.log(`Parsed referrerId: ${referrerId}`); // Add this line
             if (!isNaN(referrerId)) {
                 const referrerCheck = await client.query('SELECT user_id FROM users WHERE user_id = $1', [referrerId]);
                 if (referrerCheck.rows.length > 0) {
@@ -88,24 +87,22 @@ const insertUserAndReferral = async (username, referralLink, telegramId) => {
     }
 };
 
-
-// Endpoint to fetch initial user data (points and tickets)
 // Endpoint to fetch initial user data (points and tickets)
 app.get('/getUserData', async (req, res) => {
     try {
-        const { username, referralLink, telegramId } = req.query;
+        const { username, referralLink } = req.query;
 
-        if (!username || !telegramId) {
-            return res.status(400).json({ success: false, error: 'Username and Telegram ID are required' });
+        if (!username) {
+            return res.status(400).json({ success: false, error: 'Username is required' });
         }
 
         const client = await pool.connect();
-        const result = await client.query('SELECT user_id, points, tickets FROM users WHERE username = $1 AND telegram_id = $2', [username, telegramId]);
+        const result = await client.query('SELECT user_id, points, tickets FROM users WHERE username = $1', [username]);
 
         if (result.rows.length > 0) {
             res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
         } else {
-            const newUser = await insertUserAndReferral(username, referralLink, telegramId);
+            const newUser = await insertUserAndReferral(username, referralLink);
             res.status(200).json({ success: true, points: newUser.points, tickets: newUser.tickets });
         }
 
@@ -115,7 +112,6 @@ app.get('/getUserData', async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
-
 
 // Endpoint to fetch referral link
 app.get('/getReferralLink', async (req, res) => {
@@ -259,7 +255,6 @@ app.get('/generateReferralLink', async (req, res) => {
 });
 
 // Handle /start command
-// Handle /start command
 bot.onText(/\/start (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const authCode = match[1];
@@ -290,7 +285,6 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'Invalid referral link.');
     }
 });
-
 
 // Daily Task: Increase tickets by 10 for every user
 moment.tz.setDefault('Europe/Bucharest');
