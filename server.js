@@ -275,10 +275,6 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
                 await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE referral_link = $1', [referralLink]);
                 console.log(`Incremented friends_invited for referrer with referral link: ${referralLink}`);
 
-                // Notify the referrer if their Telegram ID is available
-                if (referrerTelegramId) {
-                    bot.sendMessage(referrerTelegramId, `Your referral ${username} has joined.`);
-                }
             }
 
             // Send a personalized welcome message to the new user
@@ -301,17 +297,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
     }
 });
 
-// Handle Telegram messages
-bot.on('message', (msg) => {
-    const chatId = msg.chat.id;
-    const username = msg.from.username;
 
-    // Log the received message
-    console.log(`Received message from ${username} (ID: ${chatId}): ${msg.text}`);
-
-    // Send a response message
-    bot.sendMessage(chatId, `Hello, ${username}! Your message has been received.`);
-});
 
 // Start the server
 app.listen(PORT, () => {
