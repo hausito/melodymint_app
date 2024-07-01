@@ -294,7 +294,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
                 // User already exists, inform them that they cannot be referred
                 bot.sendMessage(chatId, `You are already a registered user and cannot be referred.`);
             } else {
-                // Update the user's Telegram ID
+                // Update the user's Telegram ID and username
                 await client.query('UPDATE users SET telegram_id = $1, username = $2 WHERE user_id = $3', [chatId, username, userId]);
 
                 // Increment friends_invited for the referrer
