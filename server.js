@@ -279,9 +279,6 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         console.error('Error processing /start command:', error);
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
-    
-    // Log the authCode extraction separately
-    console.log(`Processed /start command with authCode: ${authCode}`);
 });
 
 // Handle Telegram messages
