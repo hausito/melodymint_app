@@ -13,6 +13,15 @@ const PORT = process.env.PORT || 3000;
 // Replace with your bot token
 const token = process.env.BOT_TOKEN || '6750160592:AAH-hbeHm6mmswN571d3UeSkoX5v1ntvceQ';
 
+
+
+bot.on('polling_error', (error) => {
+    console.error('Polling error:', error.code);  // => 'EFATAL'
+});
+bot.on('webhook_error', (error) => {
+    console.error('Webhook error:', error.code);  // => 'EFATAL'
+});
+
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new TelegramBot(token, { polling: true });
 
@@ -62,9 +71,11 @@ const insertUserAndReferral = async (username, referralLink) => {
 
         await client.query('UPDATE users SET referral_link = $1, auth_code = $2 WHERE user_id = $3', [userReferralLink, authCode, userId]);
 
+        console.log(`New user created with ID: ${userId}, referral link: ${userReferralLink}, auth code: ${authCode}`);
+
         if (referralLink) {
             const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot?start=', ''), 10);
-            console.log(`Parsed referrerId: ${referrerId}`); // Add this line
+            console.log(`Parsed referrerId: ${referrerId}`);
             if (!isNaN(referrerId)) {
                 const referrerCheck = await client.query('SELECT user_id FROM users WHERE user_id = $1', [referrerId]);
                 if (referrerCheck.rows.length > 0) {
@@ -86,6 +97,7 @@ const insertUserAndReferral = async (username, referralLink) => {
         client.release();
     }
 };
+
 
 // Endpoint to fetch initial user data (points and tickets)
 app.get('/getUserData', async (req, res) => {
@@ -258,6 +270,8 @@ app.get('/generateReferralLink', async (req, res) => {
 bot.onText(/\/start (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const authCode = match[1];
+
+    console.log(`Received /start command with authCode: ${authCode} from chatId: ${chatId}`);
 
     if (authCode) {
         try {
