@@ -270,35 +270,40 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
 
     try {
         const client = await pool.connect();
-        const result = await client.query('SELECT user_id, referral_link, telegram_id FROM users WHERE auth_code = $1', [authCode]);
+        const result = await client.query('SELECT user_id, referral_link, telegram_id, username FROM users WHERE auth_code = $1', [authCode]);
 
         if (result.rows.length > 0) {
             const newUser = result.rows[0];
             const userId = newUser.user_id;
             const referralLink = newUser.referral_link;
             const referrerTelegramId = newUser.telegram_id;
+            const referrerUsername = newUser.username;
 
-            // Update the user's Telegram ID
-            await client.query('UPDATE users SET telegram_id = $1 WHERE user_id = $2', [chatId, userId]);
+            // Check if the user already exists in the database
+            const existingUser = await client.query('SELECT * FROM users WHERE username = $1', [username]);
 
-            if (referralLink) {
+            if (existingUser.rows.length > 0) {
+                // User already exists, inform them that they cannot be referred
+                bot.sendMessage(chatId, `You are already a registered user and cannot be referred.`);
+            } else {
+                // Update the user's Telegram ID
+                await client.query('UPDATE users SET telegram_id = $1, username = $2 WHERE user_id = $3', [chatId, username, userId]);
+
                 // Increment friends_invited for the referrer
                 await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE referral_link = $1', [referralLink]);
                 console.log(`Incremented friends_invited for referrer with referral link: ${referralLink}`);
 
+                // Send a personalized welcome message to the new user
+                bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
+
+                // If there's a referrer, inform the new user about their referrer
+                if (referrerTelegramId !== chatId) {
+                    bot.sendMessage(chatId, `You were referred by someone with Telegram username: ${referrerUsername}`);
+                }
             }
-
-            // Send a personalized welcome message to the new user
-            bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
-
-            // If there's a referrer, inform the new user about their referrer
-            if (referralLink && referrerTelegramId !== chatId) {
-                bot.sendMessage(chatId, `You were referred by someone with Telegram ID: ${referrerTelegramId}`);
-            }
-
         } else {
-            // If the user does not exist in the database, proceed with a generic welcome message
-            bot.sendMessage(chatId, `Welcome! You've successfully joined via referral.`);
+            // If the auth code doesn't match, or if the user doesn't exist in the database
+            bot.sendMessage(chatId, `Welcome! You've successfully joined.`);
         }
 
         client.release();
@@ -307,6 +312,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
 });
+
 
 // Start the server
 app.listen(PORT, () => {
