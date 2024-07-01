@@ -4,6 +4,7 @@ const { Pool } = require('pg');
 const TelegramBot = require('node-telegram-bot-api');
 const cron = require('node-cron');
 const moment = require('moment-timezone');
+const crypto = require('crypto');
 
 // Initialize express app
 const app = express();
@@ -14,12 +15,6 @@ const token = process.env.BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
 
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new TelegramBot(token, { polling: true });
-
-// Replace with your image path or URL if hosted
-const imagePath = path.join(__dirname, 'photo1.jpg');
-
-// Replace with your mini-app link
-const miniAppUrl = 'https://t.me/melodymint_bot/melodymint';
 
 // PostgreSQL Connection
 const pool = new Pool({
@@ -42,13 +37,12 @@ pool.connect((err, client, done) => {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Function to handle inserting a new user and updating referrer
-const crypto = require('crypto');
-
+// Generate auth code
 const generateAuthCode = () => {
     return crypto.randomBytes(8).toString('hex');
 };
 
+// Insert user and referral function
 const insertUserAndReferral = async (username, referralLink) => {
     const client = await pool.connect();
     try {
@@ -69,7 +63,7 @@ const insertUserAndReferral = async (username, referralLink) => {
         await client.query('UPDATE users SET referral_link = $1, auth_code = $2 WHERE user_id = $3', [userReferralLink, authCode, userId]);
 
         if (referralLink) {
-            const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot/ref', ''), 10);
+            const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot?start=', ''), 10);
             if (!isNaN(referrerId)) {
                 const referrerCheck = await client.query('SELECT user_id FROM users WHERE user_id = $1', [referrerId]);
                 if (referrerCheck.rows.length > 0) {
@@ -91,7 +85,6 @@ const insertUserAndReferral = async (username, referralLink) => {
         client.release();
     }
 };
-
 
 // Endpoint to fetch initial user data (points and tickets)
 app.get('/getUserData', async (req, res) => {
@@ -231,9 +224,9 @@ app.post('/updateTickets', async (req, res) => {
     }
 });
 
-
 // Telegram Bot Functionality
 
+// Endpoint to generate referral link
 app.get('/generateReferralLink', async (req, res) => {
     try {
         const { username } = req.query;
@@ -259,11 +252,6 @@ app.get('/generateReferralLink', async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
-
-
-
-
-// Telegram Bot Functionality
 
 // Handle /start command
 bot.onText(/\/start (.+)/, async (msg, match) => {
@@ -321,8 +309,6 @@ cron.schedule('0 9 * * *', async () => {
 }, {
     timezone: 'Europe/Bucharest'
 });
-
-
 
 // Log any errors
 bot.on('polling_error', (error) => {
