@@ -15,16 +15,18 @@ const token = process.env.BOT_TOKEN || '6750160592:AAH-hbeHm6mmswN571d3UeSkoX5v1
 
 
 
+
+
+// Create a bot that uses 'polling' to fetch new updates
+const bot = new TelegramBot(token, { polling: true });
+
+
 bot.on('polling_error', (error) => {
     console.error('Polling error:', error.code);  // => 'EFATAL'
 });
 bot.on('webhook_error', (error) => {
     console.error('Webhook error:', error.code);  // => 'EFATAL'
 });
-
-// Create a bot that uses 'polling' to fetch new updates
-const bot = new TelegramBot(token, { polling: true });
-
 // PostgreSQL Connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
