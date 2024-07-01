@@ -292,12 +292,25 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
                 // Update the user's username
                 await client.query('UPDATE users SET username = $1 WHERE user_id = $2', [username, userId]);
 
-                // Increment friends_invited for the referrer
-                await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE referral_link = $1', [referralLink]);
-                console.log(`Incremented friends_invited for referrer with referral link: ${referralLink}`);
+                // Fetch referrer details
+                const referrerResult = await client.query('SELECT user_id, points FROM users WHERE referral_link = $1', [referralLink]);
 
-                // Send a personalized welcome message to the new user
-                bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
+                if (referrerResult.rows.length > 0) {
+                    const referrer = referrerResult.rows[0];
+                    const referrerId = referrer.user_id;
+
+                    // Increment points for the referrer
+                    await client.query('UPDATE users SET points = points + 1 WHERE user_id = $1', [referrerId]);
+                    console.log(`Incremented points for referrer with ID ${referrerId}`);
+
+                    // Send a personalized welcome message to the new user
+                    bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
+
+                    // Optionally, notify the referrer about the new referral
+                    bot.sendMessage(referrerId, `You've earned 1 point for referring ${username}. Current points: ${referrer.points + 1}`);
+                } else {
+                    console.error('Referrer not found for referral link:', referralLink);
+                }
             }
         } else {
             // If the auth code doesn't match, or if the user doesn't exist in the database
@@ -310,6 +323,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
 });
+
 
 
 // Start the server
