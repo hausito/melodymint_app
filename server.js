@@ -49,8 +49,13 @@ const generateAuthCode = () => {
     return crypto.randomBytes(8).toString('hex');
 };
 
+// Generate unique Telegram ID
+const generateTelegramId = () => {
+    return crypto.randomBytes(8).toString('hex');
+};
+
 // Insert user and referral function
-const insertUserAndReferral = async (username, referralLink) => {
+const insertUserAndReferral = async (username) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -60,7 +65,7 @@ const insertUserAndReferral = async (username, referralLink) => {
             VALUES ($1, $2, $3, $4, $5)
             RETURNING user_id, points, tickets
         `;
-        const insertValues = [username, 0, 100, referralLink, 0];
+        const insertValues = [username, 0, 100, '', 0]; // No referralLink needed initially
         const insertResult = await client.query(insertQuery, insertValues);
 
         const userId = insertResult.rows[0].user_id;
@@ -84,6 +89,7 @@ const insertUserAndReferral = async (username, referralLink) => {
 
 // On bot start or message event, save user information
 bot.on('message', async (msg) => {
+    const chatId = msg.chat.id;
     const username = msg.from.username;
 
     try {
@@ -94,7 +100,13 @@ bot.on('message', async (msg) => {
             // User does not exist, insert new user
             const referralLink = ''; // No referral link on initial bot start
             await insertUserAndReferral(username, referralLink);
-            console.log(`New user saved: ${username}`);
+            console.log(`New user saved: ${username} (Telegram ID: ${chatId})`);
+        } else {
+            // User exists, update their Telegram ID if not already set
+            const existingTelegramId = existingUser.rows[0].telegram_id;
+            if (!existingTelegramId) {
+                await client.query('UPDATE users SET telegram_id = $1 WHERE username = $2', [chatId, username]);
+            }
         }
 
         client.release();
@@ -195,6 +207,9 @@ app.post('/saveUser', async (req, res) => {
             const result = await client.query(updateQuery, updateValues);
             client.release();
             res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
+
+            // Notify user via Telegram
+            bot.sendMessage(existingUser.rows[0].telegram_id, `Your points have been updated. Current points: ${result.rows[0].points}`);
         } else {
             // User does not exist, insert new user
             const insertQuery = 'INSERT INTO users (username, points, tickets) VALUES ($1, $2, $3) RETURNING points, tickets';
@@ -226,6 +241,9 @@ app.post('/updateTickets', async (req, res) => {
 
         if (result.rows.length > 0) {
             res.status(200).json({ success: true, data: result.rows[0] });
+
+            // Notify user via Telegram
+            bot.sendMessage(result.rows[0].telegram_id, `Your tickets have been updated. Current tickets: ${result.rows[0].tickets}`);
         } else {
             res.status(404).json({ success: false, error: 'User not found' });
         }
@@ -251,6 +269,7 @@ cron.schedule('0 0 * * *', async () => {
 bot.onText(/\/start (.+)/, async (msg, match) => {
     const authCode = match[1];
     const username = msg.from.username; // Get the Telegram username of the current user
+    const chatId = msg.chat.id; // Get the chat ID
 
     console.log(`Received /start command with authCode: ${authCode}`);
 
@@ -291,6 +310,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
 });
+
 
 // Start the server
 app.listen(PORT, () => {
