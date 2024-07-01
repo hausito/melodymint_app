@@ -49,21 +49,21 @@ function generateOneTimeCode() {
 }
 
 // Function to handle inserting a new user and updating referrer
-const insertUserAndReferral = async (username, telegramId, referralCode) => {
+const insertUserAndReferral = async (username, userId, referralCode) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         const insertQuery = `
-            INSERT INTO users (username, points, tickets, one_time_code, friends_invited, telegram_id)
+            INSERT INTO users (username, points, tickets, one_time_code, friends_invited, user_id)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING user_id, points, tickets, one_time_code
         `;
         const oneTimeCode = generateOneTimeCode();
-        const insertValues = [username, 0, 100, oneTimeCode, 0, telegramId];
+        const insertValues = [username, 0, 100, oneTimeCode, 0, userId];
         const insertResult = await client.query(insertQuery, insertValues);
 
-        const userId = insertResult.rows[0].user_id;
+        const newUserId = insertResult.rows[0].user_id;
 
         if (referralCode) {
             const referrerResult = await client.query('SELECT user_id FROM users WHERE one_time_code = $1', [referralCode]);
@@ -96,7 +96,7 @@ bot.onText(/\/start (.+)?/, async (msg, match) => {
     // Check if the user exists and handle referrals
     const client = await pool.connect();
     try {
-        const result = await client.query('SELECT user_id FROM users WHERE telegram_id = $1', [chatId]);
+        const result = await client.query('SELECT user_id FROM users WHERE user_id = $1', [chatId]);
         if (result.rows.length === 0) {
             await insertUserAndReferral(username, chatId, referralCode);
         }
@@ -219,7 +219,7 @@ app.post('/saveUser', async (req, res) => {
             res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
 
             // Notify user via Telegram
-            bot.sendMessage(existingUser.rows[0].telegram_id, `Your points have been updated. Current points: ${result.rows[0].points}`);
+            bot.sendMessage(existingUser.rows[0].user_id, `Your points have been updated. Current points: ${result.rows[0].points}`);
         } else {
             // User does not exist, insert new user
             const insertQuery = 'INSERT INTO users (username, points, tickets) VALUES ($1, $2, $3) RETURNING points, tickets';
@@ -253,7 +253,7 @@ app.post('/updateTickets', async (req, res) => {
             res.status(200).json({ success: true, data: result.rows[0] });
 
             // Notify user via Telegram
-            bot.sendMessage(result.rows[0].telegram_id, `Your tickets have been updated. Current tickets: ${result.rows[0].tickets}`);
+            bot.sendMessage(result.rows[0].user_id, `Your tickets have been updated. Current tickets: ${result.rows[0].tickets}`);
         } else {
             res.status(404).json({ success: false, error: 'User not found' });
         }
@@ -277,9 +277,9 @@ cron.schedule('0 9 * * *', async () => {
         console.log(`Increased tickets for ${result.rowCount} users.`);
 
         // Notify users via Telegram
-        const users = await client.query('SELECT telegram_id FROM users');
+        const users = await client.query('SELECT user_id FROM users');
         users.rows.forEach(user => {
-            bot.sendMessage(user.telegram_id, `Your tickets have been updated. Current tickets: ${result.rows[0].tickets}`);
+            bot.sendMessage(user.user_id, `Your tickets have been updated. Current tickets: ${result.rows[0].tickets}`);
         });
     } catch (error) {
         console.error('Error increasing tickets:', error);
