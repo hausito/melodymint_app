@@ -151,10 +151,10 @@ app.get('/getReferralLink', async (req, res) => {
         }
 
         const client = await pool.connect();
-        const result = await client.query('SELECT referral_link, friends_invited FROM users WHERE username = $1', [username]);
+        const result = await client.query('SELECT auth_code, friends_invited FROM users WHERE username = $1', [username]);
 
         if (result.rows.length > 0) {
-            const referralLink = result.rows[0].referral_link;
+            const referralLink = result.rows[0].auth_code;
             const friendsInvited = result.rows[0].friends_invited;
             res.status(200).json({ success: true, referralLink, friendsInvited });
         } else {
