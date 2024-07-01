@@ -13,20 +13,16 @@ const PORT = process.env.PORT || 3000;
 // Replace with your bot token
 const token = process.env.BOT_TOKEN || '6750160592:AAH-hbeHm6mmswN571d3UeSkoX5v1ntvceQ';
 
-
-
-
-
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new TelegramBot(token, { polling: true });
 
-
 bot.on('polling_error', (error) => {
-    console.error('Polling error:', error.code);  // => 'EFATAL'
+    console.error('Polling error:', error.code);
 });
 bot.on('webhook_error', (error) => {
-    console.error('Webhook error:', error.code);  // => 'EFATAL'
+    console.error('Webhook error:', error.code);
 });
+
 // PostgreSQL Connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -79,10 +75,13 @@ const insertUserAndReferral = async (username, referralLink) => {
             const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot?start=', ''), 10);
             console.log(`Parsed referrerId: ${referrerId}`);
             if (!isNaN(referrerId)) {
-                const referrerCheck = await client.query('SELECT user_id FROM users WHERE user_id = $1', [referrerId]);
+                const referrerCheck = await client.query('SELECT user_id, telegram_id FROM users WHERE user_id = $1', [referrerId]);
                 if (referrerCheck.rows.length > 0) {
                     await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
                     console.log(`Incremented friends_invited for referrer ID: ${referrerId}`);
+
+                    // Notify the referrer
+                    bot.sendMessage(referrerCheck.rows[0].telegram_id, `You have a new referral: ${username}.`);
                 } else {
                     console.log(`Referrer ID ${referrerId} not found`);
                 }
@@ -99,7 +98,6 @@ const insertUserAndReferral = async (username, referralLink) => {
         client.release();
     }
 };
-
 
 // Endpoint to fetch initial user data (points and tickets)
 app.get('/getUserData', async (req, res) => {
@@ -156,7 +154,7 @@ app.get('/getReferralLink', async (req, res) => {
 // Endpoint to fetch top users
 app.get('/topUsers', async (req, res) => {
     try {
-        const topUsers = await fetchTopUsersFromDatabase(); // Implement this function
+        const topUsers = await fetchTopUsersFromDatabase();
         res.status(200).json(topUsers);
     } catch (error) {
         console.error('Error fetching top users:', error);
@@ -239,97 +237,59 @@ app.post('/updateTickets', async (req, res) => {
     }
 });
 
-// Telegram Bot Functionality
-
-// Endpoint to generate referral link
-app.get('/generateReferralLink', async (req, res) => {
+// Schedule a task to reset tickets every day at midnight
+cron.schedule('0 0 * * *', async () => {
     try {
-        const { username } = req.query;
-
-        if (!username) {
-            return res.status(400).json({ success: false, error: 'Username is required' });
-        }
-
         const client = await pool.connect();
-        const result = await client.query('SELECT auth_code FROM users WHERE username = $1', [username]);
-
-        if (result.rows.length > 0) {
-            const authCode = result.rows[0].auth_code;
-            const referralLink = `https://t.me/melodymint_bot?start=${authCode}`;
-            res.status(200).json({ success: true, referralLink });
-        } else {
-            res.status(404).json({ success: false, error: 'User not found' });
-        }
-
+        const resetQuery = 'UPDATE users SET tickets = 100';
+        await client.query(resetQuery);
         client.release();
+        console.log('Tickets reset to 100 for all users');
     } catch (err) {
-        console.error('Error generating referral link:', err);
-        res.status(500).json({ success: false, error: err.message });
+        console.error('Error resetting tickets:', err);
     }
 });
 
-// Handle /start command
+// Handle Telegram /start command with referral code
 bot.onText(/\/start (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const authCode = match[1];
-
     console.log(`Received /start command with authCode: ${authCode} from chatId: ${chatId}`);
 
-    if (authCode) {
-        try {
-            const client = await pool.connect();
-            const result = await client.query('SELECT user_id, username FROM users WHERE auth_code = $1', [authCode]);
-
-            if (result.rows.length > 0) {
-                const userId = result.rows[0].user_id;
-                const username = result.rows[0].username;
-
-                // Invalidate the auth code
-                await client.query('UPDATE users SET auth_code = NULL WHERE user_id = $1', [userId]);
-
-                bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
-            } else {
-                bot.sendMessage(chatId, 'Invalid referral link.');
-            }
-
-            client.release();
-        } catch (err) {
-            console.error('Error handling /start command:', err);
-            bot.sendMessage(chatId, 'An error occurred while processing your referral link.');
-        }
-    } else {
-        bot.sendMessage(chatId, 'Invalid referral link.');
-    }
-});
-
-// Daily Task: Increase tickets by 10 for every user
-moment.tz.setDefault('Europe/Bucharest');
-
-// Schedule cron job with timezone and adjusted time
-cron.schedule('0 9 * * *', async () => {
     try {
         const client = await pool.connect();
-        const updateQuery = 'UPDATE users SET tickets = tickets + 10 RETURNING *';
-        const result = await client.query(updateQuery);
+        const result = await client.query('SELECT user_id, username FROM users WHERE auth_code = $1', [authCode]);
+
+        if (result.rows.length > 0) {
+            const userId = result.rows[0].user_id;
+            const username = result.rows[0].username;
+            // Invalidate the auth code
+            await client.query('UPDATE users SET auth_code = NULL WHERE user_id = $1', [userId]);
+            // Update the user's Telegram ID
+            await client.query('UPDATE users SET telegram_id = $1 WHERE user_id = $2', [chatId, userId]);
+
+            bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
+        } else {
+            bot.sendMessage(chatId, 'Invalid referral link.');
+        }
+
         client.release();
-
-        console.log(`Increased tickets for ${result.rowCount} users.`);
-
-        // Notify users via Telegram
-        const users = await client.query('SELECT telegram_id FROM users');
-        users.rows.forEach(user => {
-            bot.sendMessage(user.telegram_id, `Your tickets have been updated. Current tickets: ${result.rows[0].tickets}`);
-        });
     } catch (error) {
-        console.error('Error increasing tickets:', error);
+        console.error('Error processing /start command:', error);
+        bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
-}, {
-    timezone: 'Europe/Bucharest'
 });
 
-// Log any errors
-bot.on('polling_error', (error) => {
-    console.log(error.code);  // => 'EFATAL'
+// Handle Telegram messages
+bot.on('message', (msg) => {
+    const chatId = msg.chat.id;
+    const username = msg.from.username;
+
+    // Log the received message
+    console.log(`Received message from ${username} (ID: ${chatId}): ${msg.text}`);
+
+    // Send a response message
+    bot.sendMessage(chatId, `Hello, ${username}! Your message has been received.`);
 });
 
 // Start the server
