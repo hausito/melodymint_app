@@ -257,12 +257,13 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
 
     try {
         const client = await pool.connect();
-        const result = await client.query('SELECT user_id, username, referral_link FROM users WHERE auth_code = $1', [authCode]);
+        const result = await client.query('SELECT user_id, username, referral_link, telegram_id FROM users WHERE auth_code = $1', [authCode]);
 
         if (result.rows.length > 0) {
             const userId = result.rows[0].user_id;
             const username = result.rows[0].username;
             const referralLink = result.rows[0].referral_link;
+            const referrerTelegramId = result.rows[0].telegram_id;
 
             // Update the user's Telegram ID
             await client.query('UPDATE users SET telegram_id = $1 WHERE user_id = $2', [chatId, userId]);
@@ -271,17 +272,18 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
                 // Increment friends_invited for the referrer
                 await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE referral_link = $1', [referralLink]);
                 console.log(`Incremented friends_invited for referrer with referral link: ${referralLink}`);
-                
+
                 // Notify the referrer
-                const referrerResult = await client.query('SELECT telegram_id FROM users WHERE referral_link = $1', [referralLink]);
-                if (referrerResult.rows.length > 0) {
-                    bot.sendMessage(referrerResult.rows[0].telegram_id, `You have a new referral: ${username}.`);
+                if (referrerTelegramId) {
+                    bot.sendMessage(referrerTelegramId, `You have a new referral: ${username}.`);
+                } else {
+                    console.log(`Referrer Telegram ID not found for referral link: ${referralLink}`);
                 }
             }
 
             bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
         } else {
-            // If the user does not exist in the database, proceed with welcome message
+            // If the user does not exist in the database, proceed with a generic welcome message
             bot.sendMessage(chatId, `Welcome! You've successfully joined via referral.`);
         }
 
