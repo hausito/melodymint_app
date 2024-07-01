@@ -1,4 +1,4 @@
-const express = require('express');
+ const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 const TelegramBot = require('node-telegram-bot-api');
@@ -75,14 +75,13 @@ const insertUserAndReferral = async (username, referralLink) => {
             const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot?start=', ''), 10);
             console.log(`Parsed referrerId: ${referrerId}`);
             if (!isNaN(referrerId)) {
-                const referrerCheck = await client.query('SELECT user_id, telegram_id, username FROM users WHERE user_id = $1', [referrerId]);
+                const referrerCheck = await client.query('SELECT user_id, telegram_id FROM users WHERE user_id = $1', [referrerId]);
                 if (referrerCheck.rows.length > 0) {
                     await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
                     console.log(`Incremented friends_invited for referrer ID: ${referrerId}`);
 
                     // Notify the referrer
-                    const referrerUsername = referrerCheck.rows[0].username;
-                    bot.sendMessage(referrerCheck.rows[0].telegram_id, `Hello, ${username}! You were referred by ${referrerUsername}.`);
+                    bot.sendMessage(referrerCheck.rows[0].telegram_id, `You have a new referral: ${username}.`);
                 } else {
                     console.log(`Referrer ID ${referrerId} not found`);
                 }
@@ -99,7 +98,6 @@ const insertUserAndReferral = async (username, referralLink) => {
         client.release();
     }
 };
-
 
 // Endpoint to fetch initial user data (points and tickets)
 app.get('/getUserData', async (req, res) => {
@@ -253,7 +251,6 @@ cron.schedule('0 0 * * *', async () => {
 });
 
 // Handle Telegram /start command with referral code
-// Handle Telegram /start command with referral code
 bot.onText(/\/start (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const authCode = match[1];
@@ -261,12 +258,11 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
 
     try {
         const client = await pool.connect();
-        const result = await client.query('SELECT user_id, username, referral_link FROM users WHERE auth_code = $1', [authCode]);
+        const result = await client.query('SELECT user_id, username FROM users WHERE auth_code = $1', [authCode]);
 
         if (result.rows.length > 0) {
             const userId = result.rows[0].user_id;
             const username = result.rows[0].username;
-            const referralLink = result.rows[0].referral_link;
 
             // Invalidate the auth code
             await client.query('UPDATE users SET auth_code = NULL WHERE user_id = $1', [userId]);
@@ -274,17 +270,6 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
             await client.query('UPDATE users SET telegram_id = $1 WHERE user_id = $2', [chatId, userId]);
 
             bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
-
-            if (referralLink) {
-                const referrerId = parseInt(referralLink.replace('ref', ''), 10);
-                if (!isNaN(referrerId)) {
-                    const referrerInfo = await client.query('SELECT username FROM users WHERE user_id = $1', [referrerId]);
-                    if (referrerInfo.rows.length > 0) {
-                        const referrerUsername = referrerInfo.rows[0].username;
-                        bot.sendMessage(chatId, `Hello, ${username}! You were referred by ${referrerUsername}.`);
-                    }
-                }
-            }
         } else {
             bot.sendMessage(chatId, 'Invalid referral link. Please contact support for assistance.');
         }
@@ -295,7 +280,6 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
 });
-
 
 // Handle Telegram messages
 bot.on('message', (msg) => {
