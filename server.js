@@ -264,8 +264,6 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
             const username = result.rows[0].username;
             const referralLink = result.rows[0].referral_link;
 
-            // Invalidate the auth code
-            await client.query('UPDATE users SET auth_code = NULL WHERE user_id = $1', [userId]);
             // Update the user's Telegram ID
             await client.query('UPDATE users SET telegram_id = $1 WHERE user_id = $2', [chatId, userId]);
 
