@@ -4,6 +4,7 @@ const { Pool } = require('pg');
 const TelegramBot = require('node-telegram-bot-api');
 const cron = require('node-cron');
 const moment = require('moment-timezone');
+const crypto = require('crypto');
 
 // Initialize express app
 const app = express();
@@ -42,35 +43,36 @@ pool.connect((err, client, done) => {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+// Function to generate a one-time code
+function generateOneTimeCode() {
+    return crypto.randomBytes(16).toString('hex');
+}
+
 // Function to handle inserting a new user and updating referrer
-const insertUserAndReferral = async (username, referralLink) => {
+const insertUserAndReferral = async (username, telegramId, referralCode) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         const insertQuery = `
-            INSERT INTO users (username, points, tickets, referral_link, friends_invited)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING user_id, points, tickets
+            INSERT INTO users (username, points, tickets, one_time_code, friends_invited, telegram_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING user_id, points, tickets, one_time_code
         `;
-        const insertValues = [username, 0, 100, '', 0];
+        const oneTimeCode = generateOneTimeCode();
+        const insertValues = [username, 0, 100, oneTimeCode, 0, telegramId];
         const insertResult = await client.query(insertQuery, insertValues);
 
         const userId = insertResult.rows[0].user_id;
-        const userReferralLink = `ref${userId}`;
 
-        await client.query('UPDATE users SET referral_link = $1 WHERE user_id = $2', [userReferralLink, userId]);
-
-        if (referralLink) {
-            const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot/ref', ''), 10);
-            if (!isNaN(referrerId)) {
-                const referrerCheck = await client.query('SELECT user_id FROM users WHERE user_id = $1', [referrerId]);
-                if (referrerCheck.rows.length > 0) {
-                    await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
-                    console.log(`Incremented friends_invited for referrer ID: ${referrerId}`);
-                } else {
-                    console.log(`Referrer ID ${referrerId} not found`);
-                }
+        if (referralCode) {
+            const referrerResult = await client.query('SELECT user_id FROM users WHERE one_time_code = $1', [referralCode]);
+            if (referrerResult.rows.length > 0) {
+                const referrerId = referrerResult.rows[0].user_id;
+                await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
+                console.log(`Incremented friends_invited for referrer ID: ${referrerId}`);
+            } else {
+                console.log(`Referrer code ${referralCode} not found`);
             }
         }
 
@@ -85,10 +87,48 @@ const insertUserAndReferral = async (username, referralLink) => {
     }
 };
 
+// Handle /start command
+bot.onText(/\/start (.+)?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const username = msg.from.username;
+    const referralCode = match[1]; // Extract the referral code if present
+
+    // Check if the user exists and handle referrals
+    const client = await pool.connect();
+    try {
+        const result = await client.query('SELECT user_id FROM users WHERE telegram_id = $1', [chatId]);
+        if (result.rows.length === 0) {
+            await insertUserAndReferral(username, chatId, referralCode);
+        }
+    } finally {
+        client.release();
+    }
+
+    const options = {
+        caption: `🎵 MelodyMint Revolution 🎵
+
+🌟 We are transforming how the world interacts with music by integrating it with Web3 technologies. 🌟
+
+💥 What We're Doing:
+
+Tokens: Earn and trade tokens by interacting with music like never before.
+Web3 Integration: Transfer your music into the blockchain, giving sound a real money value.
+
+🎟️ Don't forget: You earn 10 tickets every day for playing the game! 🎟️`,
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: 'Play', url: miniAppUrl }]
+            ]
+        }
+    };
+
+    bot.sendPhoto(chatId, imagePath, options);
+});
+
 // Endpoint to fetch initial user data (points and tickets)
 app.get('/getUserData', async (req, res) => {
     try {
-        const { username, referralLink } = req.query;
+        const { username, referralCode } = req.query;
 
         if (!username) {
             return res.status(400).json({ success: false, error: 'Username is required' });
@@ -100,7 +140,7 @@ app.get('/getUserData', async (req, res) => {
         if (result.rows.length > 0) {
             res.status(200).json({ success: true, points: result.rows[0].points, tickets: result.rows[0].tickets });
         } else {
-            const newUser = await insertUserAndReferral(username, referralLink);
+            const newUser = await insertUserAndReferral(username, null, referralCode);
             res.status(200).json({ success: true, points: newUser.points, tickets: newUser.tickets });
         }
 
@@ -121,10 +161,10 @@ app.get('/getReferralLink', async (req, res) => {
         }
 
         const client = await pool.connect();
-        const result = await client.query('SELECT referral_link FROM users WHERE username = $1', [username]);
+        const result = await client.query('SELECT one_time_code FROM users WHERE username = $1', [username]);
 
         if (result.rows.length > 0) {
-            const referralLink = result.rows[0].referral_link;
+            const referralLink = `https://t.me/melodymint_bot?start=${result.rows[0].one_time_code}`;
             res.status(200).json({ success: true, referralLink });
         } else {
             res.status(404).json({ success: false, error: 'Referral link not found for the user' });
@@ -221,39 +261,6 @@ app.post('/updateTickets', async (req, res) => {
         console.error('Error updating tickets:', err);
         res.status(500).json({ success: false, error: err.message });
     }
-});
-
-// Telegram Bot Functionality
-
-
-
-
-
-// Telegram Bot Functionality
-
-// Handle /start command
-bot.onText(/\/start/, (msg) => {
-    const chatId = msg.chat.id;
-
-    const options = {
-        caption: `🎵 MelodyMint Revolution 🎵
-
-🌟 We are transforming how the world interacts with music by integrating it with Web3 technologies. 🌟
-
-💥 What We're Doing:
-
-Tokens: Earn and trade tokens by interacting with music like never before.
-Web3 Integration: Transfer your music into the blockchain, giving sound a real money value.
-
-🎟️ Don't forget: You earn 10 tickets every day for playing the game! 🎟️`,
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: 'Play', url: miniAppUrl }]
-            ]
-        }
-    };
-
-    bot.sendPhoto(chatId, imagePath, options);
 });
 
 // Daily Task: Increase tickets by 10 for every user
