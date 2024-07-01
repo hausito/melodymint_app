@@ -289,7 +289,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
                 bot.sendMessage(chatId, `You are already a registered user and cannot be referred.`);
             } else {
                 // Insert the new user
-                const referralUsername = referrer.username; // Get the referrer's username
+                const referralUsername = result.rows[2]; // Get the referrer's username
                 const newUser = await insertUserAndReferral(username, referralUsername);
 
                 // Increment friends_invited for the referrer
