@@ -55,17 +55,17 @@ const generateTelegramId = () => {
 };
 
 // Insert user and referral function
-const insertUserAndReferral = async (username, referralUsername = null) => {
+const insertUserAndReferral = async (username) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         const insertQuery = `
-            INSERT INTO users (username, points, tickets, referral_link, friends_invited, referral_username)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO users (username, points, tickets, referral_link, friends_invited)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING user_id, points, tickets
         `;
-        const insertValues = [username, 0, 100, '', 0, referralUsername]; // No referralLink needed initially
+        const insertValues = [username, 0, 100, '', 0]; // No referralLink needed initially
         const insertResult = await client.query(insertQuery, insertValues);
 
         const userId = insertResult.rows[0].user_id;
@@ -86,7 +86,6 @@ const insertUserAndReferral = async (username, referralUsername = null) => {
         client.release();
     }
 };
-
 
 // On bot start or message event, save user information
 bot.on('message', async (msg) => {
@@ -289,8 +288,14 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
                 bot.sendMessage(chatId, `You are already a registered user and cannot be referred.`);
             } else {
                 // Insert the new user
-                const referralUsername = result.rows[2]; // Get the referrer's username
-                const newUser = await insertUserAndReferral(username, referralUsername);
+                const insertQuery = `
+                    INSERT INTO users (username, points, tickets, referral_link, friends_invited)
+                    VALUES ($1, $2, $3, '', 0)  -- Empty referral link and 0 friends invited initially
+                    RETURNING user_id, points, tickets
+                `;
+                const insertValues = [username, 0, 100];
+                const newUserResult = await client.query(insertQuery, insertValues);
+                const newUser = newUserResult.rows[0];
 
                 // Increment friends_invited for the referrer
                 await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrer.user_id]);
@@ -318,6 +323,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
 });
+
 
 
 
