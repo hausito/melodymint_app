@@ -250,7 +250,6 @@ cron.schedule('0 0 * * *', async () => {
     }
 });
 
-// Handle Telegram /start command with referral code
 bot.onText(/\/start (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const authCode = match[1];
@@ -258,7 +257,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
 
     try {
         const client = await pool.connect();
-        const result = await client.query('SELECT user_id, username FROM users WHERE auth_code = $1', [authCode]);
+        const result = await client.query('SELECT user_id, username, telegram_id FROM users WHERE auth_code = $1', [authCode]);
 
         if (result.rows.length > 0) {
             const userId = result.rows[0].user_id;
@@ -270,8 +269,13 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
             await client.query('UPDATE users SET telegram_id = $1 WHERE user_id = $2', [chatId, userId]);
 
             bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
+
+            // Increment friends_invited for the referrer
+            const referralLink = result.rows[0].referral_link;
+            await insertUserAndReferral(username, referralLink);
         } else {
-            bot.sendMessage(chatId, 'Invalid referral link. Please contact support for assistance.');
+            // If the user does not exist in the database, proceed with welcome message
+            bot.sendMessage(chatId, `Welcome! You've successfully joined via referral.`);
         }
 
         client.release();
@@ -280,6 +284,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
 });
+
 
 // Handle Telegram messages
 bot.on('message', (msg) => {
