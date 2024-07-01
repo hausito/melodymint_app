@@ -257,30 +257,25 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
 
     try {
         const client = await pool.connect();
-        const referrerResult = await client.query('SELECT user_id, username, telegram_id FROM users WHERE auth_code = $1', [authCode]);
+        const result = await client.query('SELECT user_id, username, telegram_id FROM users WHERE auth_code = $1', [authCode]);
 
-        if (referrerResult.rows.length > 0) {
-            const referrerUserId = referrerResult.rows[0].user_id;
-            const referrerUsername = referrerResult.rows[0].username;
+        if (result.rows.length > 0) {
+            const userId = result.rows[0].user_id;
+            const username = result.rows[0].username;
 
             // Invalidate the auth code
-            await client.query('UPDATE users SET auth_code = NULL WHERE user_id = $1', [referrerUserId]);
+            await client.query('UPDATE users SET auth_code = NULL WHERE user_id = $1', [userId]);
             // Update the user's Telegram ID
-            await client.query('UPDATE users SET telegram_id = $1 WHERE user_id = $2', [chatId, referrerUserId]);
+            await client.query('UPDATE users SET telegram_id = $1 WHERE user_id = $2', [chatId, userId]);
 
-            bot.sendMessage(chatId, `Welcome, ${referrerUsername}! You've successfully joined via referral.`);
+            bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
 
-            // Increase friends_invited count for the referrer
-            await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE auth_code = $1', [authCode]);
-            console.log(`Incremented friends_invited for referrer with auth_code: ${authCode}`);
-
-            // Notify the referrer (optional)
-            const referrerTelegramId = referrerResult.rows[0].telegram_id;
-            bot.sendMessage(referrerTelegramId, `You have a new referral: ${msg.from.username}.`);
-
+            // Increment friends_invited for the referrer
+            const referralLink = result.rows[0].referral_link;
+            await insertUserAndReferral(username, referralLink);
         } else {
-            // If the referrer auth_code is not found in the database
-            bot.sendMessage(chatId, 'Invalid referral link. Please contact support for assistance.');
+            // If the user does not exist in the database, proceed with welcome message
+            bot.sendMessage(chatId, `Welcome! You've successfully joined via referral.`);
         }
 
         client.release();
