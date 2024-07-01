@@ -273,15 +273,20 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
                 await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE referral_link = $1', [referralLink]);
                 console.log(`Incremented friends_invited for referrer with referral link: ${referralLink}`);
 
-                // Notify the referrer
+                // Notify the referrer if their Telegram ID is available
                 if (referrerTelegramId) {
                     bot.sendMessage(referrerTelegramId, `You have a new referral: ${username}.`);
-                } else {
-                    console.log(`Referrer Telegram ID not found for referral link: ${referralLink}`);
                 }
             }
 
+            // Send a personalized welcome message to the new user
             bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
+
+            // If there's a referrer, inform the new user about their referrer's Telegram ID
+            if (referralLink && referrerTelegramId) {
+                bot.sendMessage(chatId, `You were referred by someone with Telegram ID: ${referrerTelegramId}`);
+            }
+
         } else {
             // If the user does not exist in the database, proceed with a generic welcome message
             bot.sendMessage(chatId, `Welcome! You've successfully joined via referral.`);
@@ -293,7 +298,6 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
 });
-
 
 // Handle Telegram messages
 bot.on('message', (msg) => {
