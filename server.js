@@ -273,7 +273,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
 
             // Increment friends_invited for the referrer
             if (referralLink) {
-                const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot?start=', ''), 10);
+                const referrerId = parseInt(referralLink.split('=')[1], 10); // Extract referrerId from referralLink
                 console.log(`Parsed referrerId: ${referrerId}`);
                 if (!isNaN(referrerId)) {
                     const referrerCheck = await client.query('SELECT user_id, telegram_id FROM users WHERE user_id = $1', [referrerId]);
@@ -302,7 +302,6 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
 });
-
 
 
 // Handle Telegram messages
