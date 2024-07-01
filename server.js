@@ -250,17 +250,50 @@ cron.schedule('0 0 * * *', async () => {
     }
 });
 
-// Handle Telegram messages
-bot.on('message', (msg) => {
+bot.onText(/\/start (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
-    const username = msg.from.username;
+    const authCode = match[1];
 
-    // Log the received message
-    console.log(`Received message from ${username} (ID: ${chatId}): ${msg.text}`);
+    try {
+        const client = await pool.connect();
+        const result = await client.query('SELECT user_id, username, referral_link FROM users WHERE auth_code = $1', [authCode]);
 
-    // Send a response message
-    bot.sendMessage(chatId, `Hello, ${username}! Your message has been received.`);
+        if (result.rows.length > 0) {
+            const userId = result.rows[0].user_id;
+            const username = result.rows[0].username;
+            const referralLink = result.rows[0].referral_link;
+
+
+            if (!referralLink) {
+                // No referral link assigned, add user to referral system
+                if (referralLink) {
+                    const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot?start=', ''), 10);
+                    console.log(`Parsed referrerId: ${referrerId}`); // Add this line
+                    if (!isNaN(referrerId)) {
+                        const referrerCheck = await client.query('SELECT user_id FROM users WHERE user_id = $1', [referrerId]);
+                        if (referrerCheck.rows.length > 0) {
+                            await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
+                            console.log(`Incremented friends_invited for referrer ID: ${referrerId}`);
+                        } else {
+                            console.log(`Referrer ID ${referrerId} not found`);
+                        }
+                    }
+                }
+            }
+
+            bot.sendMessage(chatId, `Welcome, ${username}! You've successfully joined via referral.`);
+        } else {
+            // User not found with auth code, handle appropriately
+            bot.sendMessage(chatId, 'Invalid referral link or user not found.');
+        }
+
+        client.release();
+    } catch (err) {
+        console.error('Error handling /start command:', err);
+        bot.sendMessage(chatId, 'An error occurred while processing your referral link.');
+    }
 });
+
 
 // Start the server
 app.listen(PORT, () => {
