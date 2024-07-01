@@ -50,17 +50,17 @@ const generateAuthCode = () => {
 };
 
 // Insert user and referral function
-const insertUserAndReferral = async (username, referralLink) => {
+const insertUserAndReferral = async (username, referralLink, telegramId) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         const insertQuery = `
-            INSERT INTO users (username, points, tickets, referral_link, friends_invited)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO users (username, points, tickets, referral_link, friends_invited, telegram_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING user_id, points, tickets
         `;
-        const insertValues = [username, 0, 100, '', 0];
+        const insertValues = [username, 0, 100, referralLink, 0, telegramId];
         const insertResult = await client.query(insertQuery, insertValues);
 
         const userId = insertResult.rows[0].user_id;
@@ -70,23 +70,6 @@ const insertUserAndReferral = async (username, referralLink) => {
         await client.query('UPDATE users SET referral_link = $1, auth_code = $2 WHERE user_id = $3', [userReferralLink, authCode, userId]);
 
         console.log(`New user created with ID: ${userId}, referral link: ${userReferralLink}, auth code: ${authCode}`);
-
-        if (referralLink) {
-            const referrerId = parseInt(referralLink.replace('https://t.me/melodymint_bot?start=', ''), 10);
-            console.log(`Parsed referrerId: ${referrerId}`);
-            if (!isNaN(referrerId)) {
-                const referrerCheck = await client.query('SELECT user_id, telegram_id FROM users WHERE user_id = $1', [referrerId]);
-                if (referrerCheck.rows.length > 0) {
-                    await client.query('UPDATE users SET friends_invited = friends_invited + 1 WHERE user_id = $1', [referrerId]);
-                    console.log(`Incremented friends_invited for referrer ID: ${referrerId}`);
-
-                    // Notify the referrer
-                    bot.sendMessage(referrerCheck.rows[0].telegram_id, `You have a new referral: ${username}.`);
-                } else {
-                    console.log(`Referrer ID ${referrerId} not found`);
-                }
-            }
-        }
 
         await client.query('COMMIT');
         return { ...insertResult.rows[0], authCode };
@@ -98,6 +81,34 @@ const insertUserAndReferral = async (username, referralLink) => {
         client.release();
     }
 };
+
+// On bot start or message event, save user information
+bot.on('message', async (msg) => {
+    const chatId = msg.chat.id;
+    const username = msg.from.username;
+
+    try {
+        const client = await pool.connect();
+        const existingUser = await client.query('SELECT * FROM users WHERE username = $1', [username]);
+
+        if (existingUser.rows.length === 0) {
+            // User does not exist, insert new user
+            const referralLink = ''; // No referral link on initial bot start
+            await insertUserAndReferral(username, referralLink, chatId);
+            console.log(`New user saved: ${username} (Telegram ID: ${chatId})`);
+        } else {
+            // User exists, update their Telegram ID if not already set
+            const existingTelegramId = existingUser.rows[0].telegram_id;
+            if (!existingTelegramId) {
+                await client.query('UPDATE users SET telegram_id = $1 WHERE username = $2', [chatId, username]);
+            }
+        }
+
+        client.release();
+    } catch (error) {
+        console.error('Error saving user on bot start or message event:', error);
+    }
+});
 
 // Endpoint to fetch initial user data (points and tickets)
 app.get('/getUserData', async (req, res) => {
@@ -296,8 +307,6 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'An error occurred while processing your request. Please try again later.');
     }
 });
-
-
 
 // Start the server
 app.listen(PORT, () => {
