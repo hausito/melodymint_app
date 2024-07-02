@@ -181,6 +181,33 @@ app.get('/topUsers', async (req, res) => {
     }
 });
 
+
+// Handle /start command
+bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+
+    const options = {
+        caption: `🎵 MelodyMint Revolution 🎵
+
+🌟 We are transforming how the world interacts with music by integrating it with Web3 technologies. 🌟
+
+💥 What We're Doing:
+
+Tokens: Earn and trade tokens by interacting with music like never before.
+Web3 Integration: Transfer your music into the blockchain, giving sound a real money value.
+
+🎟️ Don't forget: You earn 10 tickets every day for playing the game! 🎟️`,
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: 'Play', url: miniAppUrl }]
+            ]
+        }
+    };
+
+    bot.sendPhoto(chatId, imagePath, options);
+});
+
+
 async function fetchTopUsersFromDatabase() {
     const client = await pool.connect();
     try {
